@@ -1,46 +1,49 @@
 import 'package:hive/hive.dart';
 
-part 'logement.g.dart'; // Nécessaire pour générer l'adapter Hive
+part 'logement.g.dart';
 
-@HiveType(typeId: 0)
+@HiveType(typeId: 1)
 class Logement extends HiveObject {
   @HiveField(0)
-  String nom; // Nom de l'hôtel ou maison
+  String nom;
 
   @HiveField(1)
-  String ville; // Ville où se situe le logement
+  String ville;
 
   @HiveField(2)
-  String type; // "hotel" ou "maison"
+  double prix;
 
   @HiveField(3)
-  double prix; // Prix par nuit
+  String description;
 
   @HiveField(4)
-  String categorie; // "famille", "solo", "éco"
+  List<String> images; // URLs ou chemins locaux
 
   @HiveField(5)
-  String description; // Description du logement
+  String adresse; // Adresse complète
 
   @HiveField(6)
-  List<String> images; // Liste des URL ou chemins des images
+  int nombreChambres; // Nombre de chambres si logement
 
   @HiveField(7)
-  List<String> services; // Wifi, parking, piscine, etc.
+  int nombreSallesBain; // Nombre de salles de bain
 
   @HiveField(8)
-  bool promotion; // true si le logement est en promotion
+  double note; // Note moyenne utilisateurs
+
+  @HiveField(9)
+  String type; // "hotel", "maison", "activite", etc.
 
   Logement({
     required this.nom,
     required this.ville,
-    required this.type,
     required this.prix,
-    required this.categorie,
     required this.description,
     required this.images,
-    required this.services,
-    required this.promotion,
+    required this.adresse,
+    required this.nombreChambres,
+    required this.nombreSallesBain,
+    this.note = 0.0,
+    required this.type,
   });
 }
-
