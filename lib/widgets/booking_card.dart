@@ -19,150 +19,249 @@ class BookingCard extends StatelessWidget {
   String _formatDate(DateTime date) {
     final months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 
                     'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return '${date.day} ${months[date.month - 1]}';
   }
 
   @override
   Widget build(BuildContext context) {
     final nights = reservation.dateFin.difference(reservation.dateDebut).inDays;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-      ),
-      elevation: AppTheme.elevationSM,
+    return Container(
       margin: EdgeInsets.symmetric(
         vertical: AppTheme.marginSM,
         horizontal: AppTheme.marginLG,
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-        child: Container(
-          padding: EdgeInsets.all(AppTheme.paddingLG),
-          child: Row(
-            children: [
-              // Image du logement
-              if (logementImage != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusXS),
-                  child: Image.asset(
-                    logementImage!,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return _buildPlaceholderImage();
-                    },
-                  ),
-                )
-              else
-                _buildPlaceholderImage(),
-
-              SizedBox(width: AppTheme.marginLG),
-
-              // Informations de réservation
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF2D2D2D) : AppTheme.backgroundLight,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        boxShadow: AppTheme.shadowLight,
+        border: Border.all(
+          color: isDarkMode ? AppTheme.borderDark : AppTheme.borderLight,
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+          splashColor: AppTheme.primary.withOpacity(0.1),
+          highlightColor: AppTheme.primary.withOpacity(0.05),
+          child: Padding(
+            padding: EdgeInsets.all(AppTheme.paddingLG),
+            child: Row(
+              children: [
+                // Image du logement avec badge de statut
+                Stack(
                   children: [
-                    // Nom du logement
-                    Text(
-                      logementName ?? "Logement #${reservation.logementId}",
-                      style: AppTheme.textTheme.titleMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                      child: logementImage != null
+                          ? Image.asset(
+                              logementImage!,
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildPlaceholderImage();
+                              },
+                            )
+                          : _buildPlaceholderImage(),
                     ),
-                    SizedBox(height: AppTheme.marginXS),
-
-                    // Dates
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: AppTheme.iconXS,
-                          color: AppTheme.textSecondary,
+                    // Badge de confirmation
+                    Positioned(
+                      top: AppTheme.paddingXS,
+                      right: AppTheme.paddingXS,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppTheme.paddingSM,
+                          vertical: AppTheme.paddingXS,
                         ),
-                        SizedBox(width: AppTheme.marginXS),
-                        Expanded(
-                          child: Text(
-                            "${_formatDate(reservation.dateDebut)} - ${_formatDate(reservation.dateFin)}",
-                            style: AppTheme.textTheme.bodySmall,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: AppTheme.marginXS),
-
-                    // Nombre de nuits
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.nightlight_outlined,
-                          size: AppTheme.iconXS,
-                          color: AppTheme.textSecondary,
-                        ),
-                        SizedBox(width: AppTheme.marginXS),
-                        Text(
-                          "$nights nuit${nights > 1 ? 's' : ''}",
-                          style: AppTheme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: AppTheme.marginMD),
-
-                    // Prix total
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppTheme.paddingMD,
-                            vertical: AppTheme.paddingXS,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.promoGradient,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusXS),
-                          ),
-                          child: Text(
-                            "${reservation.prixTotal} DT",
-                            style: AppTheme.textTheme.titleSmall?.copyWith(
-                              color: AppTheme.textLight,
-                              fontWeight: FontWeight.w700,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
                             ),
-                          ),
+                          ],
                         ),
-                        Icon(
-                          Icons.arrow_forward_ios,
+                        child: Icon(
+                          Icons.check_circle,
                           size: AppTheme.iconXS,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.textLight,
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+
+                SizedBox(width: AppTheme.marginLG),
+
+                // Informations de réservation
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Nom du logement avec style premium
+                      Text(
+                        logementName ?? "Logement #${reservation.logementId}",
+                        style: AppTheme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: isDarkMode ? AppTheme.textLight : AppTheme.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: AppTheme.marginMD),
+
+                      // Dates avec icône stylisée
+                      _buildInfoRow(
+                        icon: Icons.calendar_today_rounded,
+                        text: "${_formatDate(reservation.dateDebut)} - ${_formatDate(reservation.dateFin)}",
+                        isDarkMode: isDarkMode,
+                      ),
+                      SizedBox(height: AppTheme.marginSM),
+
+                      // Nombre de nuits avec icône stylisée
+                      _buildInfoRow(
+                        icon: Icons.nights_stay_rounded,
+                        text: "$nights nuit${nights > 1 ? 's' : ''}",
+                        isDarkMode: isDarkMode,
+                      ),
+                      SizedBox(height: AppTheme.marginLG),
+
+                      // Prix total avec design premium et flèche
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppTheme.paddingLG,
+                              vertical: AppTheme.paddingSM,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.promoGradient,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primary.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  "${reservation.prixTotal}",
+                                  style: AppTheme.textTheme.titleMedium?.copyWith(
+                                    color: AppTheme.textLight,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                Text(
+                                  " DT",
+                                  style: AppTheme.textTheme.bodySmall?.copyWith(
+                                    color: AppTheme.textLight.withOpacity(0.9),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.all(AppTheme.paddingSM),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: AppTheme.iconXS,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String text,
+    required bool isDarkMode,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(AppTheme.paddingXS),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.accentLight.withOpacity(0.2),
+                AppTheme.accentDark.withOpacity(0.2),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+          ),
+          child: Icon(
+            icon,
+            size: AppTheme.iconXS,
+            color: AppTheme.primary,
+          ),
+        ),
+        SizedBox(width: AppTheme.marginSM),
+        Expanded(
+          child: Text(
+            text,
+            style: AppTheme.textTheme.bodyMedium?.copyWith(
+              color: isDarkMode ? AppTheme.textLight.withOpacity(0.8) : AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPlaceholderImage() {
     return Container(
-      width: 80,
-      height: 80,
+      width: 100,
+      height: 100,
       decoration: BoxDecoration(
-        color: AppTheme.backgroundAlt,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.backgroundAlt,
+            AppTheme.backgroundAlt.withOpacity(0.7),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+        border: Border.all(
+          color: AppTheme.borderLight,
+          width: 1,
+        ),
       ),
       child: Icon(
-        Icons.home_outlined,
-        size: AppTheme.iconLG,
-        color: AppTheme.textTertiary,
+        Icons.home_rounded,
+        size: AppTheme.iconXL,
+        color: AppTheme.textTertiary.withOpacity(0.5),
       ),
     );
   }

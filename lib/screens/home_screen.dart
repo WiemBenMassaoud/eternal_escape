@@ -5,7 +5,6 @@ import '../utils/theme.dart';
 import '../widgets/property_card.dart';
 import '../widgets/property_search_bar.dart';
 import '../widgets/category_chip.dart';
-import '../widgets/custom_button.dart';
 import 'logement_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {

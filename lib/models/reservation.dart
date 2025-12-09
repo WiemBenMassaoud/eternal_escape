@@ -1,12 +1,11 @@
 import 'package:hive/hive.dart';
-import 'logement.dart';
 
 part 'reservation.g.dart';
 
-@HiveType(typeId: 2)
+@HiveType(typeId: 1)
 class Reservation extends HiveObject {
   @HiveField(0)
-  int logementId; // ID du logement réservé
+  int logementId;
 
   @HiveField(1)
   DateTime dateDebut;
@@ -18,10 +17,25 @@ class Reservation extends HiveObject {
   double prixTotal;
 
   @HiveField(4)
-  String utilisateurEmail; // Email de l’utilisateur qui a réservé
+  String utilisateurEmail;
 
   @HiveField(5)
-  String statut; // "en attente", "confirmée", "annulée"
+  String status; // 'pending', 'confirmed', 'cancelled', 'completed'
+
+  @HiveField(6)
+  String? paymentMethod; // 'credit_card', 'paypal', 'cash'
+
+  @HiveField(7)
+  double? serviceFee;
+
+  @HiveField(8)
+  double? cleaningFee;
+
+  @HiveField(9)
+  DateTime createdAt;
+
+  @HiveField(10)
+  DateTime? cancelledAt;
 
   Reservation({
     required this.logementId,
@@ -29,12 +43,16 @@ class Reservation extends HiveObject {
     required this.dateFin,
     required this.prixTotal,
     required this.utilisateurEmail,
-    this.statut = "en attente",
-  });
+    this.status = 'pending',
+    this.paymentMethod,
+    this.serviceFee = 0,
+    this.cleaningFee = 0,
+    DateTime? createdAt,
+    this.cancelledAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
-  /// Récupérer le logement complet
-  Logement? getLogement() {
-    var box = Hive.box<Logement>('logements');
-    return box.get(logementId);
-  }
+  bool get isUpcoming => status == 'confirmed' && dateDebut.isAfter(DateTime.now());
+  bool get isCompleted => status == 'completed' || dateFin.isBefore(DateTime.now());
+  bool get isCancelled => status == 'cancelled';
+  bool get isPending => status == 'pending';
 }
