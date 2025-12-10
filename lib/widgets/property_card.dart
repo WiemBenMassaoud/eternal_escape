@@ -4,212 +4,357 @@ import '../utils/theme.dart';
 
 class PropertyCard extends StatelessWidget {
   final Logement logement;
-  final VoidCallback onTap;
   final bool isFavorite;
-  final VoidCallback? onFavoriteToggle;
+  final VoidCallback onTap;
+  final VoidCallback onFavoriteToggle;
 
   const PropertyCard({
     Key? key,
     required this.logement,
+    required this.isFavorite,
     required this.onTap,
-    this.isFavorite = false,
-    this.onFavoriteToggle,
+    required this.onFavoriteToggle,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-      ),
-      elevation: AppTheme.elevationSM,
-      margin: EdgeInsets.symmetric(
-        vertical: AppTheme.marginSM,
-        horizontal: AppTheme.marginLG,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-            color: AppTheme.backgroundCard,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image section avec badge favori
-              Stack(
-                children: [
-                  ClipRRect(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: EdgeInsets.symmetric(
+          horizontal: AppTheme.paddingLG,
+          vertical: AppTheme.paddingSM,
+        ),
+        decoration: BoxDecoration(
+          color: AppTheme.backgroundCard,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+          boxShadow: AppTheme.shadowLight,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image du logement
+            Stack(
+              children: [
+                Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(AppTheme.radiusSM),
-                      topRight: Radius.circular(AppTheme.radiusSM),
+                      topLeft: Radius.circular(AppTheme.radiusMD),
+                      topRight: Radius.circular(AppTheme.radiusMD),
                     ),
-                    child: logement.images.isNotEmpty
-                        ? Image.asset(
-                            logement.images.first,
-                            width: double.infinity,
-                            height: AppTheme.imageHeightSM,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildPlaceholderImage();
-                            },
-                          )
-                        : _buildPlaceholderImage(),
                   ),
-                  // Bouton favori
-                  if (onFavoriteToggle != null)
-                    Positioned(
-                      top: AppTheme.paddingMD,
-                      right: AppTheme.paddingMD,
-                      child: GestureDetector(
-                        onTap: onFavoriteToggle,
-                        child: Container(
-                          padding: EdgeInsets.all(AppTheme.paddingSM),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            shape: BoxShape.circle,
-                            boxShadow: AppTheme.shadowLight,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(AppTheme.radiusMD),
+                      topRight: Radius.circular(AppTheme.radiusMD),
+                    ),
+                    child: Image.asset(
+                      logement.images.isNotEmpty ? logement.images[0] : 'assets/images/placeholder.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: AppTheme.backgroundAlt,
+                          child: Center(
+                            child: Icon(
+                              Icons.home_rounded,
+                              size: 60,
+                              color: AppTheme.textTertiary,
+                            ),
                           ),
-                          child: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: isFavorite ? AppTheme.primary : AppTheme.textSecondary,
-                            size: AppTheme.iconSM,
-                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                // Badge type
+                Positioned(
+                  top: AppTheme.marginMD,
+                  left: AppTheme.marginMD,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppTheme.paddingMD,
+                      vertical: AppTheme.paddingXS,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                    ),
+                    child: Text(
+                      logement.type,
+                      style: AppTheme.textTheme.labelSmall?.copyWith(
+                        color: AppTheme.textLight,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                // Bouton favori
+                Positioned(
+                  top: AppTheme.marginMD,
+                  right: AppTheme.marginMD,
+                  child: GestureDetector(
+                    onTap: onFavoriteToggle,
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppTheme.backgroundLight,
+                        shape: BoxShape.circle,
+                        boxShadow: AppTheme.shadowLight,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite ? AppTheme.primary : AppTheme.textPrimary,
+                          size: 20,
                         ),
                       ),
                     ),
-                  // Badge type de logement
+                  ),
+                ),
+                // Indicateur d'étoiles pour les hôtels
+                if (logement.type == 'Hôtel' && logement.nombreEtoiles > 0)
                   Positioned(
-                    top: AppTheme.paddingMD,
-                    left: AppTheme.paddingMD,
+                    bottom: AppTheme.marginMD,
+                    left: AppTheme.marginMD,
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: AppTheme.paddingMD,
+                        horizontal: AppTheme.paddingSM,
                         vertical: AppTheme.paddingXS,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary,
+                        color: Colors.amber.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(AppTheme.radiusXS),
                       ),
-                      child: Text(
-                        logement.type,
-                        style: AppTheme.textTheme.labelSmall?.copyWith(
-                          color: AppTheme.textLight,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(logement.nombreEtoiles, (index) {
+                          return Icon(
+                            Icons.star,
+                            size: 14,
+                            color: Colors.white,
+                          );
+                        }),
                       ),
                     ),
                   ),
-                ],
-              ),
+              ],
+            ),
 
-              // Informations du logement
-              Padding(
-                padding: EdgeInsets.all(AppTheme.paddingLG),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Nom et ville
-                    Text(
-                      logement.nom,
-                      style: AppTheme.textTheme.titleMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: AppTheme.marginXS),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: AppTheme.iconXS,
+            // Informations du logement
+            Padding(
+              padding: EdgeInsets.all(AppTheme.paddingLG),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Nom et ville
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          logement.nom,
+                          style: AppTheme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // Prix
+                      Text(
+                        "${logement.prix.toStringAsFixed(0)} DT",
+                        style: AppTheme.textTheme.headlineSmall?.copyWith(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: AppTheme.textSecondary,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        logement.ville,
+                        style: AppTheme.textTheme.bodyMedium?.copyWith(
                           color: AppTheme.textSecondary,
                         ),
-                        SizedBox(width: AppTheme.marginXS),
-                        Expanded(
-                          child: Text(
-                            logement.ville,
-                            style: AppTheme.textTheme.bodyMedium,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                      ),
+                      if (logement.note > 0) ...[
+                        Spacer(),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppTheme.paddingSM,
+                            vertical: AppTheme.paddingXS,
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: AppTheme.marginMD),
-                    
-                    // Caractéristiques
-                    Row(
-                      children: [
-                        _buildFeature(Icons.bed_outlined, "${logement.nombreChambres}"),
-                        SizedBox(width: AppTheme.marginLG),
-                        _buildFeature(Icons.bathroom_outlined, "${logement.nombreSallesBain}"),
-                      ],
-                    ),
-                    
-                    SizedBox(height: AppTheme.marginMD),
-                    Divider(height: 1, color: AppTheme.borderLight),
-                    SizedBox(height: AppTheme.marginMD),
-                    
-                    // Prix
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        RichText(
-                          text: TextSpan(
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              TextSpan(
-                                text: "${logement.prix} DT",
-                                style: AppTheme.textTheme.titleLarge?.copyWith(
+                              Icon(
+                                Icons.star,
+                                size: 14,
+                                color: Colors.amber,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                logement.note.toStringAsFixed(1),
+                                style: AppTheme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
                                   color: AppTheme.primary,
-                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              TextSpan(
-                                text: " /nuit",
-                                style: AppTheme.textTheme.bodySmall,
-                              ),
+                              if (logement.nombreAvis > 0) ...[
+                                SizedBox(width: 2),
+                                Text(
+                                  "(${logement.nombreAvis})",
+                                  style: AppTheme.textTheme.labelSmall?.copyWith(
+                                    color: AppTheme.textTertiary,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: AppTheme.iconXS,
-                          color: AppTheme.textSecondary,
-                        ),
+                      ],
+                    ],
+                  ),
+
+                  SizedBox(height: AppTheme.marginMD),
+
+                  // Caractéristiques
+                  Row(
+                    children: [
+                      _buildFeatureItem(
+                        icon: Icons.bed_rounded,
+                        text: "${logement.nombreChambres} chambre${logement.nombreChambres > 1 ? 's' : ''}",
+                      ),
+                      SizedBox(width: AppTheme.marginLG),
+                      _buildFeatureItem(
+                        icon: Icons.bathroom_rounded,
+                        text: "${logement.nombreSallesBain} salle${logement.nombreSallesBain > 1 ? 's' : ''} de bain",
+                      ),
+                    ],
+                  ),
+
+                  // Équipements
+                  if (logement.hasPool || logement.hasWiFi || logement.hasParking) ...[
+                    SizedBox(height: AppTheme.marginMD),
+                    Wrap(
+                      spacing: AppTheme.marginSM,
+                      runSpacing: AppTheme.marginXS,
+                      children: [
+                        if (logement.hasWiFi)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppTheme.paddingSM,
+                              vertical: AppTheme.paddingXS,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.backgroundAlt,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.wifi, size: 12, color: AppTheme.textSecondary),
+                                SizedBox(width: 4),
+                                Text(
+                                  "Wi-Fi",
+                                  style: AppTheme.textTheme.labelSmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (logement.hasPool)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppTheme.paddingSM,
+                              vertical: AppTheme.paddingXS,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.backgroundAlt,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.pool, size: 12, color: AppTheme.textSecondary),
+                                SizedBox(width: 4),
+                                Text(
+                                  "Piscine",
+                                  style: AppTheme.textTheme.labelSmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (logement.hasParking)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppTheme.paddingSM,
+                              vertical: AppTheme.paddingXS,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.backgroundAlt,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.local_parking, size: 12, color: AppTheme.textSecondary),
+                                SizedBox(width: 4),
+                                Text(
+                                  "Parking",
+                                  style: AppTheme.textTheme.labelSmall,
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildPlaceholderImage() {
-    return Container(
-      width: double.infinity,
-      height: AppTheme.imageHeightSM,
-      color: AppTheme.backgroundAlt,
-      child: Icon(
-        Icons.home_outlined,
-        size: AppTheme.iconXXL,
-        color: AppTheme.textTertiary,
+  Widget _buildFeatureItem({required IconData icon, required String text}) {
+    return Expanded(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: AppTheme.textTertiary,
+          ),
+          SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              style: AppTheme.textTheme.bodySmall?.copyWith(
+                color: AppTheme.textTertiary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildFeature(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: AppTheme.iconXS, color: AppTheme.textSecondary),
-        SizedBox(width: AppTheme.marginXS),
-        Text(text, style: AppTheme.textTheme.bodyMedium),
-      ],
     );
   }
 }

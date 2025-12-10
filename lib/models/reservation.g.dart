@@ -22,19 +22,27 @@ class ReservationAdapter extends TypeAdapter<Reservation> {
       dateFin: fields[2] as DateTime,
       prixTotal: fields[3] as double,
       utilisateurEmail: fields[4] as String,
-      status: fields[5] as String? ?? 'pending',
+      status: fields[5] as String,
       paymentMethod: fields[6] as String?,
       serviceFee: fields[7] as double?,
       cleaningFee: fields[8] as double?,
       createdAt: fields[9] as DateTime?,
       cancelledAt: fields[10] as DateTime?,
+      numberOfGuests: fields[11] as int?,
+      nbAdultes: fields[12] as int?,
+      nbEnfants3a17: fields[13] as int?,
+      nbEnfantsMoins3: fields[14] as int?,
+      nombreChambresReservees: fields[15] as int?,
+      nombreSuites: fields[16] as int?,
+      pensionType: fields[17] as String,
+      pensionFee: fields[18] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Reservation obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.logementId)
       ..writeByte(1)
@@ -56,7 +64,23 @@ class ReservationAdapter extends TypeAdapter<Reservation> {
       ..writeByte(9)
       ..write(obj.createdAt)
       ..writeByte(10)
-      ..write(obj.cancelledAt);
+      ..write(obj.cancelledAt)
+      ..writeByte(11)
+      ..write(obj.numberOfGuests)
+      ..writeByte(12)
+      ..write(obj.nbAdultes)
+      ..writeByte(13)
+      ..write(obj.nbEnfants3a17)
+      ..writeByte(14)
+      ..write(obj.nbEnfantsMoins3)
+      ..writeByte(15)
+      ..write(obj.nombreChambresReservees)
+      ..writeByte(16)
+      ..write(obj.nombreSuites)
+      ..writeByte(17)
+      ..write(obj.pensionType)
+      ..writeByte(18)
+      ..write(obj.pensionFee);
   }
 
   @override

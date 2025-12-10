@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/reservation.dart';
 import '../models/logement.dart';
-import 'logement_detail_screen.dart';
+import '../utils/theme.dart';
+import '../widgets/booking_card.dart';
+import 'reservation_details_screen.dart';
 
 class ReservationsScreen extends StatelessWidget {
   const ReservationsScreen({super.key});
@@ -12,13 +14,46 @@ class ReservationsScreen extends StatelessWidget {
     var box = Hive.box<Reservation>('reservations');
 
     return Scaffold(
-      appBar: AppBar(title: Text("📅 Réservations"), backgroundColor: Colors.deepPurple),
+      backgroundColor: AppTheme.backgroundAlt,
+      appBar: AppBar(
+        title: Text("📅 Réservations"),
+        backgroundColor: AppTheme.primary,
+        elevation: 0,
+      ),
       body: ValueListenableBuilder(
         valueListenable: box.listenable(),
         builder: (context, Box<Reservation> reservations, _) {
-          if (reservations.isEmpty) return Center(child: Text("Aucune réservation"));
+          if (reservations.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 80,
+                    color: AppTheme.textTertiary,
+                  ),
+                  SizedBox(height: AppTheme.marginXL),
+                  Text(
+                    "Aucune réservation",
+                    style: AppTheme.textTheme.titleLarge?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  SizedBox(height: AppTheme.marginMD),
+                  Text(
+                    "Vos réservations apparaîtront ici",
+                    style: AppTheme.textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
 
           return ListView.builder(
+            padding: EdgeInsets.symmetric(vertical: AppTheme.paddingLG),
             itemCount: reservations.length,
             itemBuilder: (context, index) {
               Reservation res = reservations.getAt(index)!;
@@ -27,23 +62,91 @@ class ReservationsScreen extends StatelessWidget {
 
               if (logement == null) return SizedBox();
 
-              return Card(
-                margin: EdgeInsets.all(10),
-                child: ListTile(
-                  leading: logement.images.isNotEmpty
-                      ? Image.asset(logement.images.first, width: 60, height: 60, fit: BoxFit.cover)
-                      : Icon(Icons.home, size: 50),
-                  title: Text(logement.nom),
-                  subtitle: Text(
-                      "${res.dateDebut.toLocal()} - ${res.dateFin.toLocal()}\nPrix total: ${res.prixTotal} DT"),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => reservations.deleteAt(index),
+              return Dismissible(
+                key: Key(res.key.toString()),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: EdgeInsets.only(right: AppTheme.paddingXL),
+                  margin: EdgeInsets.symmetric(
+                    vertical: AppTheme.marginSM,
+                    horizontal: AppTheme.marginLG,
                   ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppTheme.error, AppTheme.error.withOpacity(0.8)],
+                    ),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  ),
+                  child: Icon(
+                    Icons.delete_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                confirmDismiss: (direction) async {
+                  return await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                        ),
+                        title: Text(
+                          'Supprimer la réservation ?',
+                          style: AppTheme.textTheme.titleLarge,
+                        ),
+                        content: Text(
+                          'Êtes-vous sûr de vouloir supprimer cette réservation ?',
+                          style: AppTheme.textTheme.bodyMedium,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: Text('Annuler'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.error,
+                            ),
+                            child: Text('Supprimer'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                onDismissed: (direction) async {
+                  await reservations.deleteAt(index);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: AppTheme.marginMD),
+                          Text('Réservation supprimée'),
+                        ],
+                      ),
+                      backgroundColor: AppTheme.success,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                      ),
+                    ),
+                  );
+                },
+                child: BookingCard(
+                  reservation: res,
+                  logementName: logement.nom,
+                  logementImage: logement.images.isNotEmpty ? logement.images.first : null,
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => LogementDetailScreen(logement: logement)),
+                      MaterialPageRoute(
+                        builder: (_) => ReservationDetailScreen(reservation: res),
+                      ),
                     );
                   },
                 ),

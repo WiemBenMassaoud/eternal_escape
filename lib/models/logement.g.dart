@@ -8,7 +8,7 @@ part of 'logement.dart';
 
 class LogementAdapter extends TypeAdapter<Logement> {
   @override
-  final int typeId = 1;
+  final int typeId = 0;
 
   @override
   Logement read(BinaryReader reader) {
@@ -27,13 +27,26 @@ class LogementAdapter extends TypeAdapter<Logement> {
       nombreSallesBain: fields[7] as int,
       note: fields[8] as double,
       type: fields[9] as String,
+      pensionType: fields[10] as String?,
+      nombreChambresDisponibles: fields[11] as int?,
+      hasSuites: fields[12] as bool?,
+      prixSuite: fields[13] as double?,
+      nombreEtoiles: fields[14] as int,
+      nombreAvis: fields[15] as int,
+      equippements: (fields[16] as List?)?.cast<String>(),
+      hasWiFi: fields[17] as bool,
+      hasParking: fields[18] as bool,
+      hasPool: fields[19] as bool,
+      avis: (fields[20] as List?)
+          ?.map((dynamic e) => (e as Map).cast<String, dynamic>())
+          ?.toList(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Logement obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(21)
       ..writeByte(0)
       ..write(obj.nom)
       ..writeByte(1)
@@ -53,7 +66,29 @@ class LogementAdapter extends TypeAdapter<Logement> {
       ..writeByte(8)
       ..write(obj.note)
       ..writeByte(9)
-      ..write(obj.type);
+      ..write(obj.type)
+      ..writeByte(10)
+      ..write(obj.pensionType)
+      ..writeByte(11)
+      ..write(obj.nombreChambresDisponibles)
+      ..writeByte(12)
+      ..write(obj.hasSuites)
+      ..writeByte(13)
+      ..write(obj.prixSuite)
+      ..writeByte(14)
+      ..write(obj.nombreEtoiles)
+      ..writeByte(15)
+      ..write(obj.nombreAvis)
+      ..writeByte(16)
+      ..write(obj.equippements)
+      ..writeByte(17)
+      ..write(obj.hasWiFi)
+      ..writeByte(18)
+      ..write(obj.hasParking)
+      ..writeByte(19)
+      ..write(obj.hasPool)
+      ..writeByte(20)
+      ..write(obj.avis);
   }
 
   @override

@@ -1,3 +1,4 @@
+import 'package:eternal_escape/widgets/review_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/logement.dart';
@@ -5,7 +6,10 @@ import '../models/reservation.dart';
 import '../utils/theme.dart';
 import '../widgets/amenity_chip.dart';
 import '../widgets/custom_button.dart';
+import '../widgets/guest_selector_widget.dart';
+import '../widgets/room_pension_selector_widget.dart';
 import 'payment_screen.dart';
+import '../widgets/favorite_button.dart';
 
 class LogementDetailScreen extends StatefulWidget {
   final Logement logement;
@@ -19,19 +23,104 @@ class LogementDetailScreen extends StatefulWidget {
 class _LogementDetailScreenState extends State<LogementDetailScreen> {
   int _currentImageIndex = 0;
   bool _isFavorite = false;
-  DateTime? _selectedStartDate;
-  DateTime? _selectedEndDate;
+  DateTime? checkInDate;
+  DateTime? checkOutDate;
+  
+  // Variables pour les voyageurs
+  int adults = 1;
+  int children3to17 = 0;
+  int childrenUnder3 = 0;
+
+  // ✅ NOUVELLES VARIABLES
+  int nombreChambres = 1;
+  int nombreSuites = 0;
+  String selectedPension = 'Sans pension';
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialiser la pension par défaut selon le type de logement
+    selectedPension = widget.logement.pensionType ?? 
+                      widget.logement.getDefaultPensionType();
+  }
+
+  // Calcul du prix selon le nombre de personnes, nuits, chambres et pension
+  double calculateTotalPrice() {
+    if (checkInDate == null || checkOutDate == null) return 0;
+    
+    final nights = checkOutDate!.difference(checkInDate!).inDays;
+    final pricePerNight = widget.logement.prix;
+    
+    // Prix de base des chambres
+    double basePrice = nombreChambres * pricePerNight * nights;
+    
+    // Ajouter le prix des suites
+    if (nombreSuites > 0) {
+      double suitePrice = widget.logement.prixSuite ?? 50.0;
+      basePrice += nombreSuites * (pricePerNight + suitePrice) * nights;
+    }
+    
+    // Multiplier par le nombre d'adultes
+    basePrice *= adults;
+    
+    // Enfants 3-17 ans : demi-tarif
+    if (children3to17 > 0) {
+      basePrice += (children3to17 * pricePerNight * 0.5 * nights);
+    }
+    
+    // Bébés < 3 ans : gratuit (on n'ajoute rien)
+    
+    // Ajouter le coût de la pension
+    double pensionCost = 0;
+    switch (selectedPension) {
+      case 'Petit déjeuner':
+        pensionCost = basePrice * (widget.logement.type.toLowerCase() == 'hôtel' ? 0.10 : 0.15);
+        break;
+      case 'Demi-pension':
+        pensionCost = basePrice * 0.25;
+        break;
+      case 'All Inclusive':
+        pensionCost = basePrice * 0.45;
+        break;
+    }
+    
+    // Frais additionnels
+    final serviceFee = (basePrice + pensionCost) * 0.10;
+    final cleaningFee = 50.0;
+    
+    return basePrice + pensionCost + serviceFee + cleaningFee;
+  }
+
+  double getPensionFee() {
+    if (checkInDate == null || checkOutDate == null) return 0;
+    
+    final nights = checkOutDate!.difference(checkInDate!).inDays;
+    final pricePerNight = widget.logement.prix;
+    
+    double basePrice = nombreChambres * pricePerNight * nights;
+    if (nombreSuites > 0) {
+      double suitePrice = widget.logement.prixSuite ?? 50.0;
+      basePrice += nombreSuites * (pricePerNight + suitePrice) * nights;
+    }
+    basePrice *= adults;
+    if (children3to17 > 0) {
+      basePrice += (children3to17 * pricePerNight * 0.5 * nights);
+    }
+    
+    switch (selectedPension) {
+      case 'Petit déjeuner':
+        return basePrice * (widget.logement.type.toLowerCase() == 'hôtel' ? 0.10 : 0.15);
+      case 'Demi-pension':
+        return basePrice * 0.25;
+      case 'All Inclusive':
+        return basePrice * 0.45;
+      default:
+        return 0;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final nights = _selectedEndDate != null && _selectedStartDate != null
-        ? _selectedEndDate!.difference(_selectedStartDate!).inDays
-        : 2;
-    final serviceFee = widget.logement.prix * 0.1; // 10% frais de service
-    final cleaningFee = 30.0; // Frais de ménage fixe
-    final subtotal = widget.logement.prix * nights;
-    final totalPrice = subtotal + serviceFee + cleaningFee;
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -44,7 +133,46 @@ class _LogementDetailScreenState extends State<LogementDetailScreen> {
                 Divider(height: 1, color: AppTheme.borderLight),
                 _buildMainFeatures(),
                 Divider(height: 1, color: AppTheme.borderLight),
-                _buildDateSelection(),
+                _buildDateSelector(),
+                Divider(height: 1, color: AppTheme.borderLight),
+                
+                // ✅ Section Chambres & Pension
+                Padding(
+                  padding: EdgeInsets.all(AppTheme.paddingXXL),
+                  child: RoomPensionSelector(
+                    logement: widget.logement,
+                    initialNombreChambres: nombreChambres,
+                    initialNombreSuites: nombreSuites,
+                    initialPensionType: selectedPension,
+                    onChanged: (chambres, suites, pension) {
+                      setState(() {
+                        nombreChambres = chambres;
+                        nombreSuites = suites;
+                        selectedPension = pension;
+                      });
+                    },
+                  ),
+                ),
+                
+                Divider(height: 1, color: AppTheme.borderLight),
+                
+                // Section Voyageurs
+                Padding(
+                  padding: EdgeInsets.all(AppTheme.paddingXXL),
+                  child: GuestSelector(
+                    initialAdults: adults,
+                    initialChildren3to17: children3to17,
+                    initialChildrenUnder3: childrenUnder3,
+                    onGuestsChanged: (newAdults, newChildren3to17, newChildrenUnder3) {
+                      setState(() {
+                        adults = newAdults;
+                        children3to17 = newChildren3to17;
+                        childrenUnder3 = newChildrenUnder3;
+                      });
+                    },
+                  ),
+                ),
+                
                 Divider(height: 1, color: AppTheme.borderLight),
                 _buildDescription(),
                 Divider(height: 1, color: AppTheme.borderLight),
@@ -55,7 +183,7 @@ class _LogementDetailScreenState extends State<LogementDetailScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomBar(totalPrice, nights, serviceFee, cleaningFee),
+      bottomNavigationBar: _buildBookingBar(),
     );
   }
 
@@ -224,104 +352,138 @@ class _LogementDetailScreenState extends State<LogementDetailScreen> {
     );
   }
 
-  Widget _buildDateSelection() {
-    return Padding(
-      padding: EdgeInsets.all(AppTheme.paddingXXL),
+  Widget _buildDateSelector() {
+    return Container(
+      margin: EdgeInsets.all(AppTheme.paddingXXL),
+      padding: EdgeInsets.all(AppTheme.paddingXL),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundLight,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(color: AppTheme.borderLight),
+        boxShadow: AppTheme.shadowLight,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Sélectionner les dates', style: AppTheme.textTheme.titleLarge),
-          SizedBox(height: AppTheme.marginLG),
           Row(
             children: [
-              Expanded(
-                child: _buildDateButton(
-                  label: 'Arrivée',
-                  date: _selectedStartDate,
-                  onTap: () => _selectDate(true),
+              Container(
+                padding: EdgeInsets.all(AppTheme.paddingSM),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                ),
+                child: Icon(
+                  Icons.calendar_today_rounded,
+                  color: AppTheme.textLight,
+                  size: 20,
                 ),
               ),
               SizedBox(width: AppTheme.marginMD),
-              Expanded(
-                child: _buildDateButton(
-                  label: 'Départ',
-                  date: _selectedEndDate,
-                  onTap: () => _selectDate(false),
+              Text(
+                'Sélectionner les dates',
+                style: AppTheme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
+          SizedBox(height: AppTheme.marginXL),
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildDateField(
+                  label: 'Arrivée',
+                  date: checkInDate,
+                  onTap: () => _selectCheckInDate(context),
+                ),
+              ),
+              SizedBox(width: AppTheme.marginLG),
+              Expanded(
+                child: _buildDateField(
+                  label: 'Départ',
+                  date: checkOutDate,
+                  onTap: () => _selectCheckOutDate(context),
+                ),
+              ),
+            ],
+          ),
+          
+          if (checkInDate != null && checkOutDate != null) ...[
+            SizedBox(height: AppTheme.marginLG),
+            Container(
+              padding: EdgeInsets.all(AppTheme.paddingMD),
+              decoration: BoxDecoration(
+                gradient: AppTheme.promoGradient,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.nights_stay_rounded,
+                    color: AppTheme.textLight,
+                    size: 20,
+                  ),
+                  SizedBox(width: AppTheme.marginMD),
+                  Text(
+                    '${checkOutDate!.difference(checkInDate!).inDays} nuit${checkOutDate!.difference(checkInDate!).inDays > 1 ? 's' : ''}',
+                    style: AppTheme.textTheme.titleMedium?.copyWith(
+                      color: AppTheme.textLight,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildDateButton({required String label, DateTime? date, required VoidCallback onTap}) {
+  Widget _buildDateField({
+    required String label,
+    required DateTime? date,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
       child: Container(
         padding: EdgeInsets.all(AppTheme.paddingLG),
         decoration: BoxDecoration(
-          color: AppTheme.backgroundCard,
+          color: AppTheme.backgroundAlt,
           borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-          border: Border.all(color: date != null ? AppTheme.primary : AppTheme.borderLight),
+          border: Border.all(
+            color: date != null ? AppTheme.primary : AppTheme.borderLight,
+            width: date != null ? 2 : 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: AppTheme.textTheme.bodySmall),
-            SizedBox(height: 4),
             Text(
-              date != null ? _formatDate(date) : 'Sélectionner',
+              label,
+              style: AppTheme.textTheme.bodySmall?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            SizedBox(height: AppTheme.marginSM),
+            Text(
+              date != null
+                  ? '${date.day}/${date.month}/${date.year}'
+                  : 'Sélectionner',
               style: AppTheme.textTheme.titleMedium?.copyWith(
-                color: date != null ? AppTheme.primary : AppTheme.textSecondary,
+                color: date != null ? AppTheme.textPrimary : AppTheme.textTertiary,
+                fontWeight: date != null ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _selectDate(bool isStartDate) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(Duration(days: isStartDate ? 1 : 3)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(primary: AppTheme.primary),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        if (isStartDate) {
-          _selectedStartDate = picked;
-          if (_selectedEndDate != null && _selectedEndDate!.isBefore(picked)) {
-            _selectedEndDate = null;
-          }
-        } else {
-          if (_selectedStartDate != null && picked.isAfter(_selectedStartDate!)) {
-            _selectedEndDate = picked;
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('La date de départ doit être après la date d\'arrivée')),
-            );
-          }
-        }
-      });
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    final months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-    return '${date.day} ${months[date.month - 1]}';
   }
 
   Widget _buildDescription() {
@@ -371,8 +533,246 @@ class _LogementDetailScreenState extends State<LogementDetailScreen> {
       ),
     );
   }
+  Widget _buildReviews() {
+    return Padding(
+      padding: EdgeInsets.all(AppTheme.paddingXXL),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Avis & Notes', style: AppTheme.textTheme.titleLarge),
+              Row(
+                children: [
+                  Icon(Icons.star, color: Colors.amber, size: 20),
+                  SizedBox(width: 4),
+                  Text(
+                    widget.logement.note.toStringAsFixed(1),
+                    style: AppTheme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    '(${widget.logement.nombreAvis} avis)',
+                    style: AppTheme.textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          
+          SizedBox(height: AppTheme.marginMD),
+          
+          // Affichage des étoiles pour les hôtels
+          if (widget.logement.type == 'Hôtel' && widget.logement.nombreEtoiles > 0) ...[
+            Row(
+              children: [
+                Text(
+                  'Classement : ',
+                  style: AppTheme.textTheme.bodyMedium,
+                ),
+                Row(
+                  children: List.generate(widget.logement.nombreEtoiles, (index) {
+                    return Icon(Icons.star, color: Colors.amber, size: 20);
+                  }),
+                ),
+                Text(
+                  ' étoiles',
+                  style: AppTheme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+            SizedBox(height: AppTheme.marginMD),
+          ],
+          
+          // Barre d'ajout d'avis
+          Container(
+            padding: EdgeInsets.all(AppTheme.paddingLG),
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundAlt,
+              borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+              border: Border.all(color: AppTheme.borderLight),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Partagez votre expérience',
+                        style: AppTheme.textTheme.titleMedium,
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Votre avis aide les autres voyageurs',
+                        style: AppTheme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _showAddReviewDialog(context);
+                  },
+                  icon: Icon(Icons.rate_review, size: 18),
+                  label: Text('Écrire un avis'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          SizedBox(height: AppTheme.marginLG),
+          
+          // Liste des avis
+          if (widget.logement.avis != null && widget.logement.avis!.isNotEmpty)
+            ...widget.logement.avis!.map((avis) {
+              return ReviewCard(
+                userName: avis['utilisateur'] ?? 'Anonyme',
+                userAvatar: 'assets/images/avatar_default.jpg',
+                rating: avis['note']?.toDouble() ?? 0.0,
+                comment: avis['commentaire'] ?? '',
+                date: _formatDate(avis['date']),
+              );
+            }).toList(),
+          
+          if (widget.logement.avis == null || widget.logement.avis!.isEmpty)
+            Container(
+              padding: EdgeInsets.all(AppTheme.paddingXXL),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundAlt,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                border: Border.all(color: AppTheme.borderLight),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.reviews_outlined,
+                    size: 60,
+                    color: AppTheme.textTertiary,
+                  ),
+                  SizedBox(height: AppTheme.marginMD),
+                  Text(
+                    'Aucun avis pour le moment',
+                    style: AppTheme.textTheme.titleMedium,
+                  ),
+                  SizedBox(height: AppTheme.marginSM),
+                  Text(
+                    'Soyez le premier à partager votre expérience !',
+                    style: AppTheme.textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildBottomBar(double totalPrice, int nights, double serviceFee, double cleaningFee) {
+  String _formatDate(String? dateString) {
+    if (dateString == null) return '';
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Future<void> _showAddReviewDialog(BuildContext context) async {
+    TextEditingController commentController = TextEditingController();
+    double rating = 5.0;
+    
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Ajouter un avis'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Votre note'),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          index < rating.floor() ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 30,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            rating = index + 1.0;
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: commentController,
+                    decoration: InputDecoration(
+                      labelText: 'Votre commentaire',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Annuler'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (commentController.text.isNotEmpty) {
+                      widget.logement.addAvis(
+                        'Utilisateur',
+                        commentController.text,
+                        rating,
+                        DateTime.now(),
+                      );
+                      widget.logement.save();
+                      setState(() {});
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Votre avis a été ajouté avec succès'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                  child: Text('Publier'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBookingBar() {
+    final totalPrice = calculateTotalPrice();
+    final canBook = checkInDate != null && 
+                    checkOutDate != null && 
+                    totalPrice > 0;
+
     return Container(
       padding: EdgeInsets.all(AppTheme.paddingXXL),
       decoration: BoxDecoration(
@@ -386,38 +786,81 @@ class _LogementDetailScreenState extends State<LogementDetailScreen> {
         ],
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Prix total', style: AppTheme.textTheme.bodySmall),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${totalPrice.toStringAsFixed(0)}',
-                        style: AppTheme.textTheme.headlineMedium?.copyWith(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(' DT', style: AppTheme.textTheme.bodyMedium?.copyWith(color: AppTheme.primary)),
-                    ],
+            if (canBook) ...[
+              Container(
+                padding: EdgeInsets.all(AppTheme.paddingLG),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                  border: Border.all(
+                    color: AppTheme.primary.withOpacity(0.3),
                   ),
-                  Text('pour $nights nuit${nights > 1 ? 's' : ''}', style: AppTheme.textTheme.bodySmall),
-                ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.people_rounded, 
+                                 size: 18, 
+                                 color: AppTheme.primary),
+                            SizedBox(width: AppTheme.marginSM),
+                            Text(
+                              'Voyageurs',
+                              style: AppTheme.textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '${adults + children3to17 + childrenUnder3} ${adults + children3to17 + childrenUnder3 > 1 ? 'personnes' : 'personne'}',
+                          style: AppTheme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: AppTheme.marginMD),
+                    Divider(color: AppTheme.borderLight),
+                    SizedBox(height: AppTheme.marginMD),
+                    
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total',
+                          style: AppTheme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          '${totalPrice.toStringAsFixed(2)} DT',
+                          style: AppTheme.textTheme.titleLarge?.copyWith(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            SizedBox(width: AppTheme.marginLG),
+              SizedBox(height: AppTheme.marginLG),
+            ],
+            
             CustomButton(
-              text: 'Réserver',
+              text: canBook ? 'Réserver' : 'Sélectionner les dates',
               variant: ButtonVariant.gradient,
               size: ButtonSize.large,
-              icon: Icons.payment_rounded,
-              onPressed: () => _navigateToPayment(totalPrice, nights, serviceFee, cleaningFee),
+              isFullWidth: true,
+              icon: canBook ? Icons.check_circle_rounded : Icons.calendar_today_rounded,
+              onPressed: canBook ? _proceedToReservation : null,
             ),
           ],
         ),
@@ -425,30 +868,114 @@ class _LogementDetailScreenState extends State<LogementDetailScreen> {
     );
   }
 
-  void _navigateToPayment(double totalPrice, int nights, double serviceFee, double cleaningFee) {
-    if (_selectedStartDate == null || _selectedEndDate == null) {
+  Future<void> _selectCheckInDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: checkInDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppTheme.primary,
+              onPrimary: AppTheme.textLight,
+              surface: AppTheme.backgroundLight,
+              onSurface: AppTheme.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        checkInDate = picked;
+        if (checkOutDate != null && checkOutDate!.isBefore(picked)) {
+          checkOutDate = null;
+        }
+      });
+    }
+  }
+
+  Future<void> _selectCheckOutDate(BuildContext context) async {
+    if (checkInDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Veuillez sélectionner les dates de séjour'),
-          backgroundColor: AppTheme.error,
+          content: Text('Veuillez d\'abord sélectionner la date d\'arrivée'),
+          backgroundColor: AppTheme.warning,
         ),
       );
       return;
     }
 
-    // Créer la réservation en statut "pending"
-    final reservation = Reservation(
-      logementId: widget.logement.key as int,
-      dateDebut: _selectedStartDate!,
-      dateFin: _selectedEndDate!,
-      prixTotal: totalPrice,
-      utilisateurEmail: "demo@escape.com", // À remplacer par l'email de l'utilisateur connecté
-      status: 'pending',
-      serviceFee: serviceFee,
-      cleaningFee: cleaningFee,
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: checkOutDate ?? checkInDate!.add(Duration(days: 1)),
+      firstDate: checkInDate!.add(Duration(days: 1)),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppTheme.primary,
+              onPrimary: AppTheme.textLight,
+              surface: AppTheme.backgroundLight,
+              onSurface: AppTheme.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
-    // Naviguer vers l'écran de paiement
+    if (picked != null) {
+      setState(() {
+        checkOutDate = picked;
+      });
+    }
+  }
+
+  void _proceedToReservation() {
+    if (checkInDate == null || checkOutDate == null) return;
+
+    final nights = checkOutDate!.difference(checkInDate!).inDays;
+    final pricePerNight = widget.logement.prix;
+    
+    double subtotal = nombreChambres * pricePerNight * nights;
+    if (nombreSuites > 0) {
+      double suitePrice = widget.logement.prixSuite ?? 50.0;
+      subtotal += nombreSuites * (pricePerNight + suitePrice) * nights;
+    }
+    subtotal *= adults;
+    if (children3to17 > 0) {
+      subtotal += children3to17 * (pricePerNight * 0.5) * nights;
+    }
+    
+    final pensionFee = getPensionFee();
+    final serviceFee = (subtotal + pensionFee) * 0.10;
+    final cleaningFee = 50.0;
+    final total = subtotal + pensionFee + serviceFee + cleaningFee;
+
+    final reservation = Reservation(
+      logementId: widget.logement.key as int,
+      dateDebut: checkInDate!,
+      dateFin: checkOutDate!,
+      prixTotal: total,
+      serviceFee: serviceFee,
+      cleaningFee: cleaningFee,
+      nbAdultes: adults,
+      nbEnfants3a17: children3to17,
+      nbEnfantsMoins3: childrenUnder3,
+      nombreChambresReservees: nombreChambres,
+      nombreSuites: nombreSuites,
+      pensionType: selectedPension,
+      pensionFee: pensionFee,
+      utilisateurEmail: "demo@escape.com",
+      status: 'pending',
+    );
+
     Navigator.push(
       context,
       MaterialPageRoute(
