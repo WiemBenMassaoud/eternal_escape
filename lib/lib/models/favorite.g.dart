@@ -8,7 +8,7 @@ part of 'favorite.dart';
 
 class FavoriteAdapter extends TypeAdapter<Favorite> {
   @override
-  final int typeId = 3;
+  final int typeId = 2;
 
   @override
   Favorite read(BinaryReader reader) {

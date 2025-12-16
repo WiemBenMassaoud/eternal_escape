@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/reservation.dart';
 import '../models/logement.dart';
-import 'logement_detail_screen.dart';
+import '../utils/theme.dart';
+import '../widgets/booking_card.dart';
+import 'reservation_details_screen.dart';
 
 class ReservationsScreen extends StatelessWidget {
   const ReservationsScreen({super.key});
@@ -12,17 +14,11 @@ class ReservationsScreen extends StatelessWidget {
     var box = Hive.box<Reservation>('reservations');
 
     return Scaffold(
+      backgroundColor: AppTheme.backgroundAlt,
       appBar: AppBar(
-        title: const Text(
-          " Historiques des réservations",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
-        ),
-        backgroundColor: const Color.fromARGB(255, 134, 107, 207),
-        centerTitle: true,
-        elevation: 2,
+        title: Text("📅 Réservations"),
+        backgroundColor: AppTheme.primary,
+        elevation: 0,
       ),
       body: ValueListenableBuilder(
         valueListenable: box.listenable(),
@@ -33,17 +29,22 @@ class ReservationsScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.calendar_month_outlined,
-                    size: 70,
-                    color: Colors.grey[400],
+                    Icons.calendar_today_rounded,
+                    size: 80,
+                    color: AppTheme.textTertiary,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: AppTheme.marginXL),
                   Text(
                     "Aucune réservation",
-                    style: TextStyle(
-                      fontSize: 17,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+                    style: AppTheme.textTheme.titleLarge?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  SizedBox(height: AppTheme.marginMD),
+                  Text(
+                    "Vos réservations apparaîtront ici",
+                    style: AppTheme.textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textTertiary,
                     ),
                   ),
                 ],
@@ -52,170 +53,102 @@ class ReservationsScreen extends StatelessWidget {
           }
 
           return ListView.builder(
+            padding: EdgeInsets.symmetric(vertical: AppTheme.paddingLG),
             itemCount: reservations.length,
             itemBuilder: (context, index) {
               Reservation res = reservations.getAt(index)!;
               var logementBox = Hive.box<Logement>('logements');
               var logement = logementBox.get(res.logementId);
 
-              if (logement == null) return const SizedBox();
+              if (logement == null) return SizedBox();
 
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+              return Dismissible(
+                key: Key(res.key.toString()),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: EdgeInsets.only(right: AppTheme.paddingXL),
+                  margin: EdgeInsets.symmetric(
+                    vertical: AppTheme.marginSM,
+                    horizontal: AppTheme.marginLG,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppTheme.error, AppTheme.error.withOpacity(0.8)],
                     ),
-                  ],
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  ),
+                  child: Icon(
+                    Icons.delete_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LogementDetailScreen(logement: logement),
+                confirmDismiss: (direction) async {
+                  return await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                         ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          // Image du logement
-                          Container(
-                            width: 70,
-                            height: 70,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: Colors.grey[200],
-                              image: logement.images.isNotEmpty
-                                  ? DecorationImage(
-                                      image: AssetImage(logement.images.first),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                            ),
-                            child: logement.images.isEmpty
-                                ? Icon(
-                                    Icons.home_outlined,
-                                    size: 35,
-                                    color: Colors.grey[400],
-                                  )
-                                : null,
+                        title: Text(
+                          'Supprimer la réservation ?',
+                          style: AppTheme.textTheme.titleLarge,
+                        ),
+                        content: Text(
+                          'Êtes-vous sûr de vouloir supprimer cette réservation ?',
+                          style: AppTheme.textTheme.bodyMedium,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: Text('Annuler'),
                           ),
-                          const SizedBox(width: 12),
-                          
-                          // Détails
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  logement.nom,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "${res.dateDebut.toLocal()} - ${res.dateFin.toLocal()}",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[700],
-                                  ),
-                                  maxLines: 2,
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Prix total:",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[700],
-                                      ),
-                                    ),
-                                    Text(
-                                      "${res.prixTotal} DT",
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.deepPurple,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.error,
                             ),
-                          ),
-                          
-                          // Bouton suppression
-                          IconButton(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text(
-                                    "Confirmer la suppression",
-                                    style: TextStyle(fontWeight: FontWeight.w600),
-                                  ),
-                                  content: const Text("Voulez-vous vraiment supprimer cette réservation ?"),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text("Annuler"),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        reservations.deleteAt(index);
-                                        Navigator.pop(context);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text("Réservation supprimée"),
-                                            duration: Duration(seconds: 2),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                      ),
-                                      child: const Text("Supprimer"),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            icon: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.delete_outline,
-                                size: 22,
-                                color: Colors.red,
-                              ),
-                            ),
+                            child: Text('Supprimer'),
                           ),
                         ],
+                      );
+                    },
+                  );
+                },
+                onDismissed: (direction) async {
+                  await reservations.deleteAt(index);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: AppTheme.marginMD),
+                          Text('Réservation supprimée'),
+                        ],
+                      ),
+                      backgroundColor: AppTheme.success,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                       ),
                     ),
-                  ),
+                  );
+                },
+                child: BookingCard(
+                  reservation: res,
+                  logementName: logement.nom,
+                  logementImage: logement.images.isNotEmpty ? logement.images.first : null,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ReservationDetailScreen(reservation: res),
+                      ),
+                    );
+                  },
                 ),
               );
             },

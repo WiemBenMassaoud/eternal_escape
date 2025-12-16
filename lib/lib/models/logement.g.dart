@@ -17,27 +17,28 @@ class LogementAdapter extends TypeAdapter<Logement> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Logement(
-      nom: fields[0] as String,
-      ville: fields[1] as String,
-      prix: fields[2] as double,
-      description: fields[3] as String,
-      images: (fields[4] as List).cast<String>(),
-      adresse: fields[5] as String,
-      nombreChambres: fields[6] as int,
-      nombreSallesBain: fields[7] as int,
-      note: fields[8] as double,
-      type: fields[9] as String,
-      pensionType: fields[10] as String?,
-      nombreChambresDisponibles: fields[11] as int?,
-      hasSuites: fields[12] as bool?,
-      prixSuite: fields[13] as double?,
-      nombreEtoiles: fields[14] as int,
-      nombreAvis: fields[15] as int,
-      equippements: (fields[16] as List?)?.cast<String>(),
-      hasWiFi: fields[17] as bool,
-      hasParking: fields[18] as bool,
-      hasPool: fields[19] as bool,
-      avis: (fields[20] as List?)
+      id: fields[0] as int?,
+      nom: fields[1] as String,
+      ville: fields[2] as String,
+      prix: fields[3] as double,
+      description: fields[4] as String,
+      images: (fields[5] as List).cast<String>(),
+      adresse: fields[6] as String,
+      nombreChambres: fields[7] as int,
+      nombreSallesBain: fields[8] as int,
+      note: fields[9] as double,
+      type: fields[10] as String,
+      pensionType: fields[11] as String?,
+      nombreChambresDisponibles: fields[12] as int?,
+      hasSuites: fields[13] as bool?,
+      prixSuite: fields[14] as double?,
+      nombreEtoiles: fields[15] as int,
+      nombreAvis: fields[16] as int,
+      equippements: (fields[17] as List?)?.cast<String>(),
+      hasWiFi: fields[18] as bool,
+      hasParking: fields[19] as bool,
+      hasPool: fields[20] as bool,
+      avis: (fields[21] as List?)
           ?.map((dynamic e) => (e as Map).cast<String, dynamic>())
           ?.toList(),
     );
@@ -46,48 +47,50 @@ class LogementAdapter extends TypeAdapter<Logement> {
   @override
   void write(BinaryWriter writer, Logement obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(22)
       ..writeByte(0)
-      ..write(obj.nom)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.ville)
+      ..write(obj.nom)
       ..writeByte(2)
-      ..write(obj.prix)
+      ..write(obj.ville)
       ..writeByte(3)
-      ..write(obj.description)
+      ..write(obj.prix)
       ..writeByte(4)
-      ..write(obj.images)
+      ..write(obj.description)
       ..writeByte(5)
-      ..write(obj.adresse)
+      ..write(obj.images)
       ..writeByte(6)
-      ..write(obj.nombreChambres)
+      ..write(obj.adresse)
       ..writeByte(7)
-      ..write(obj.nombreSallesBain)
+      ..write(obj.nombreChambres)
       ..writeByte(8)
-      ..write(obj.note)
+      ..write(obj.nombreSallesBain)
       ..writeByte(9)
-      ..write(obj.type)
+      ..write(obj.note)
       ..writeByte(10)
-      ..write(obj.pensionType)
+      ..write(obj.type)
       ..writeByte(11)
-      ..write(obj.nombreChambresDisponibles)
+      ..write(obj.pensionType)
       ..writeByte(12)
-      ..write(obj.hasSuites)
+      ..write(obj.nombreChambresDisponibles)
       ..writeByte(13)
-      ..write(obj.prixSuite)
+      ..write(obj.hasSuites)
       ..writeByte(14)
-      ..write(obj.nombreEtoiles)
+      ..write(obj.prixSuite)
       ..writeByte(15)
-      ..write(obj.nombreAvis)
+      ..write(obj.nombreEtoiles)
       ..writeByte(16)
-      ..write(obj.equippements)
+      ..write(obj.nombreAvis)
       ..writeByte(17)
-      ..write(obj.hasWiFi)
+      ..write(obj.equippements)
       ..writeByte(18)
-      ..write(obj.hasParking)
+      ..write(obj.hasWiFi)
       ..writeByte(19)
-      ..write(obj.hasPool)
+      ..write(obj.hasParking)
       ..writeByte(20)
+      ..write(obj.hasPool)
+      ..writeByte(21)
       ..write(obj.avis);
   }
 

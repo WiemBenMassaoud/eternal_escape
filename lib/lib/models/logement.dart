@@ -5,71 +5,73 @@ part 'logement.g.dart';
 @HiveType(typeId: 0)
 class Logement extends HiveObject {
   @HiveField(0)
+  int? id; // ✅ AJOUT DU CHAMP ID
+  
+  @HiveField(1)
   String nom;
 
-  @HiveField(1)
+  @HiveField(2)
   String ville;
 
-  @HiveField(2)
+  @HiveField(3)
   double prix;
 
-  @HiveField(3)
+  @HiveField(4)
   String description;
 
-  @HiveField(4)
+  @HiveField(5)
   List<String> images;
 
-  @HiveField(5)
+  @HiveField(6)
   String adresse;
 
-  @HiveField(6)
+  @HiveField(7)
   int nombreChambres;
 
-  @HiveField(7)
+  @HiveField(8)
   int nombreSallesBain;
 
-  @HiveField(8)
-  double note; // Note moyenne (1-5)
-
   @HiveField(9)
-  String type; // "Hôtel", "Maison", "Villa", etc.
+  double note;
 
-  // ✅ NOUVEAUX CHAMPS
   @HiveField(10)
-  String? pensionType; // "All Inclusive", "Demi-pension", "Petit déjeuner", "Sans pension"
+  String type;
 
   @HiveField(11)
-  int? nombreChambresDisponibles; // Nombre total de chambres disponibles
+  String? pensionType;
 
   @HiveField(12)
-  bool? hasSuites; // Si le logement propose des suites
+  int? nombreChambresDisponibles;
 
   @HiveField(13)
-  double? prixSuite; // Prix supplémentaire pour une suite (par chambre)
+  bool? hasSuites;
 
-  // ✅ NOUVEAUX CHAMPS POUR LES ÉTOILES ET AVIS
   @HiveField(14)
-  int nombreEtoiles; // Nombre d'étoiles (1-5) pour les hôtels
+  double? prixSuite;
 
   @HiveField(15)
-  int nombreAvis; // Nombre total d'avis
+  int nombreEtoiles;
 
   @HiveField(16)
-  List<String>? equippements; // Liste des équipements disponibles
+  int nombreAvis;
 
   @HiveField(17)
-  bool hasWiFi; // Wi-Fi disponible
+  List<String>? equippements;
 
   @HiveField(18)
-  bool hasParking; // Parking disponible
+  bool hasWiFi;
 
   @HiveField(19)
-  bool hasPool; // Piscine disponible
+  bool hasParking;
 
   @HiveField(20)
-  List<Map<String, dynamic>>? avis; // Liste des avis détaillés
+  bool hasPool;
+
+  @HiveField(21)
+  List<Map<String, dynamic>>? avis;
 
   Logement({
+    this.id,
     required this.nom,
     required this.ville,
     required this.prix,
@@ -99,6 +101,9 @@ class Logement extends HiveObject {
   bool get hasDemiPension => pensionType == "Demi-pension";
   
   bool get hasAllInclusive => pensionType == "All Inclusive";
+
+  // ✅ GETTER ID AMÉLIORÉ
+  int get logementId => id ?? (key as int? ?? 0);
 
   // Prix par défaut pour la pension selon le type de logement
   String getDefaultPensionType() {
@@ -168,5 +173,17 @@ class Logement extends HiveObject {
     if (hasParkingFilter != null && hasParkingFilter && !hasParking) return false;
     
     return true;
+  }
+  
+  // ✅ GÉNÉRATION AUTOMATIQUE D'IMAGES
+  static List<String> generateImages(String type, int count) {
+    final baseUrl = 'https://picsum.photos/seed/';
+    final random = DateTime.now().millisecondsSinceEpoch;
+    
+    List<String> images = [];
+    for (int i = 0; i < count; i++) {
+      images.add('$baseUrl${type.toLowerCase()}_$random$i/800/600');
+    }
+    return images;
   }
 }

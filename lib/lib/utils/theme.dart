@@ -34,7 +34,7 @@ class AppTheme {
   static const Color backgroundAlt = Color(0xFFF7F7F7);
   static const Color backgroundDark = Color(0xFF1A1A1A);
   static const Color backgroundCard = Color(0xFFFAFAFA);
-  static const Color background = Color(0xFFF8F9FF);
+
   static const Color border = Color(0xFFDDDDDD);
   static const Color borderLight = Color(0xFFEBEBEB);
   static const Color borderDark = Color(0xFF404040);

@@ -1,19 +1,21 @@
+// favorite.dart
 import 'package:hive/hive.dart';
+
 part 'favorite.g.dart';
 
-@HiveType(typeId: 3)
+@HiveType(typeId: 2)
 class Favorite extends HiveObject {
   @HiveField(0)
-  int logementId;
+  int logementId; // ID du logement ou activité
 
   @HiveField(1)
   String type; // "logement" ou "activite"
 
   @HiveField(2)
-  String utilisateurEmail;
+  String utilisateurEmail; // Email de l'utilisateur
 
   @HiveField(3)
-  DateTime dateAjout;
+  DateTime dateAjout; // Quand l'utilisateur a ajouté ce favori
 
   Favorite({
     required this.logementId,
@@ -21,4 +23,18 @@ class Favorite extends HiveObject {
     required this.utilisateurEmail,
     required this.dateAjout,
   });
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is Favorite &&
+            runtimeType == other.runtimeType &&
+            logementId == other.logementId &&
+            utilisateurEmail == other.utilisateurEmail &&
+            type == other.type;
+  }
+
+  @override
+  int get hashCode =>
+      logementId.hashCode ^ utilisateurEmail.hashCode ^ type.hashCode;
 }

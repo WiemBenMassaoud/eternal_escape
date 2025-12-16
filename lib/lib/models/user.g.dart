@@ -2,10 +2,6 @@
 
 part of 'user.dart';
 
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
-
 class UserAdapter extends TypeAdapter<User> {
   @override
   final int typeId = 3;
@@ -16,16 +12,35 @@ class UserAdapter extends TypeAdapter<User> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
+    
+    // CORRECTION DE L'ERREUR : Conversion sécurisée pour reservationsIds
+    List<int> reservationsIds = [];
+    if (fields[8] != null) {
+      if (fields[8] is List<int>) {
+        reservationsIds = fields[8] as List<int>;
+      } else if (fields[8] is List) {
+        // Tente de convertir chaque élément en int
+        for (var item in fields[8] as List) {
+          if (item is int) {
+            reservationsIds.add(item);
+          } else if (item is String) {
+            final parsed = int.tryParse(item);
+            if (parsed != null) reservationsIds.add(parsed);
+          }
+        }
+      }
+    }
+    
     return User(
       prenom: fields[0] as String,
       nom: fields[1] as String,
       email: fields[2] as String,
       telephone: fields[3] as String,
       dateNaissance: fields[4] as DateTime?,
-      photoProfil: fields[5] as String?,
-      adresse: fields[6] as String?,
+      photoProfil: fields[5] as String,
+      adresse: fields[6] as String,
       motDePasse: fields[7] as String?,
-      reservationsIds: (fields[8] as List?)?.cast<int>(),
+      reservationsIds: reservationsIds, // Utilise la liste convertie
     );
   }
 

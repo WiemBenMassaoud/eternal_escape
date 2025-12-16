@@ -101,7 +101,9 @@ class BookingCard extends StatelessWidget {
 
                 SizedBox(width: AppTheme.marginLG),
 
-                // Informations de réservation
+                // ============================================
+                // SECTION CORRIGÉE - DÉBUT
+                // ============================================
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,6 +134,11 @@ class BookingCard extends StatelessWidget {
                         text: "$nights nuit${nights > 1 ? 's' : ''}",
                         isDarkMode: isDarkMode,
                       ),
+                      SizedBox(height: AppTheme.marginSM),
+
+                      // ✅ CORRIGÉ: Affichage détaillé des voyageurs
+                      _buildGuestsInfo(isDarkMode),
+                      
                       SizedBox(height: AppTheme.marginLG),
 
                       // Prix total avec design premium et flèche
@@ -157,7 +164,7 @@ class BookingCard extends StatelessWidget {
                             child: Row(
                               children: [
                                 Text(
-                                  "${reservation.prixTotal}",
+                                  "${reservation.prixTotal.toStringAsFixed(0)}",
                                   style: AppTheme.textTheme.titleMedium?.copyWith(
                                     color: AppTheme.textLight,
                                     fontWeight: FontWeight.w800,
@@ -191,10 +198,153 @@ class BookingCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                // ============================================
+                // SECTION CORRIGÉE - FIN
+                // ============================================
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Affichage détaillé des voyageurs
+  Widget _buildGuestsInfo(bool isDarkMode) {
+    List<Widget> guestParts = [];
+
+    // Adultes
+    if (reservation.nbAdultes > 0) {
+      guestParts.add(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.person_rounded,
+              size: 14,
+              color: AppTheme.primary,
+            ),
+            SizedBox(width: 4),
+            Text(
+              '${reservation.nbAdultes}',
+              style: AppTheme.textTheme.bodySmall?.copyWith(
+                color: isDarkMode ? AppTheme.textLight.withOpacity(0.8) : AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Enfants 3-17 ans
+    if (reservation.nbEnfants3a17 > 0) {
+      if (guestParts.isNotEmpty) {
+        guestParts.add(
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              '•',
+              style: TextStyle(
+                color: isDarkMode ? AppTheme.textLight.withOpacity(0.5) : AppTheme.textTertiary,
+              ),
+            ),
+          ),
+        );
+      }
+      guestParts.add(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.child_care_rounded,
+              size: 14,
+              color: AppTheme.accentDark,
+            ),
+            SizedBox(width: 4),
+            Text(
+              '${reservation.nbEnfants3a17}',
+              style: AppTheme.textTheme.bodySmall?.copyWith(
+                color: isDarkMode ? AppTheme.textLight.withOpacity(0.8) : AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Bébés < 3 ans
+    if (reservation.nbEnfantsMoins3 > 0) {
+      if (guestParts.isNotEmpty) {
+        guestParts.add(
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              '•',
+              style: TextStyle(
+                color: isDarkMode ? AppTheme.textLight.withOpacity(0.5) : AppTheme.textTertiary,
+              ),
+            ),
+          ),
+        );
+      }
+      guestParts.add(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.baby_changing_station_rounded,
+              size: 14,
+              color: AppTheme.success,
+            ),
+            SizedBox(width: 4),
+            Text(
+              '${reservation.nbEnfantsMoins3}',
+              style: AppTheme.textTheme.bodySmall?.copyWith(
+                color: isDarkMode ? AppTheme.textLight.withOpacity(0.8) : AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppTheme.paddingSM,
+        vertical: AppTheme.paddingXS,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.accentLight.withOpacity(0.15),
+            AppTheme.accentDark.withOpacity(0.15),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.people_rounded,
+            size: 14,
+            color: AppTheme.primary,
+          ),
+          SizedBox(width: 6),
+          ...guestParts,
+          SizedBox(width: 6),
+          Text(
+            '(${reservation.totalGuests})',
+            style: AppTheme.textTheme.bodySmall?.copyWith(
+              color: isDarkMode ? AppTheme.textLight.withOpacity(0.6) : AppTheme.textTertiary,
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }

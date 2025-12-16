@@ -2,8 +2,8 @@ import 'package:hive/hive.dart';
 
 part 'user.g.dart';
 
-@HiveType(typeId: 3) // typeId: 3 reste inchangé
-class User extends HiveObject {
+@HiveType(typeId: 3)
+class User {
   @HiveField(0)
   String prenom;
 
@@ -11,7 +11,7 @@ class User extends HiveObject {
   String nom;
 
   @HiveField(2)
-  String email; // identifiant unique
+  String email;
 
   @HiveField(3)
   String telephone;
@@ -48,13 +48,11 @@ class User extends HiveObject {
   /// Méthode pour ajouter une réservation
   void ajouterReservation(int reservationId) {
     reservationsIds.add(reservationId);
-    save(); // sauvegarde dans Hive
   }
 
   /// Méthode pour retirer une réservation
   void retirerReservation(int reservationId) {
     reservationsIds.remove(reservationId);
-    save();
   }
 
   /// Retourne le nom complet

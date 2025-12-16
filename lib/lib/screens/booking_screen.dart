@@ -14,7 +14,8 @@ class BookingScreen extends StatefulWidget {
   State<BookingScreen> createState() => _BookingScreenState();
 }
 
-class _BookingScreenState extends State<BookingScreen> with SingleTickerProviderStateMixin {
+class _BookingScreenState extends State<BookingScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -49,6 +50,10 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
     );
   }
 
+  // ------------------------------------------------------------
+  // SLIVER APP BAR
+  // ------------------------------------------------------------
+
   Widget _buildSliverAppBar(bool innerBoxIsScrolled) {
     return SliverAppBar(
       expandedHeight: 180,
@@ -77,7 +82,8 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                         padding: EdgeInsets.all(AppTheme.paddingMD),
                         decoration: BoxDecoration(
                           gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusSM),
                         ),
                         child: Icon(
                           Icons.calendar_month_rounded,
@@ -119,7 +125,7 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                   labelColor: AppTheme.textLight,
                   unselectedLabelColor: AppTheme.textSecondary,
                   dividerColor: Colors.transparent,
-                  tabs: [
+                  tabs: const [
                     Tab(text: 'À venir'),
                     Tab(text: 'Terminées'),
                     Tab(text: 'Annulées'),
@@ -134,25 +140,23 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
     );
   }
 
+  // ------------------------------------------------------------
+  // LISTE DES RÉSERVATIONS
+  // ------------------------------------------------------------
+
   Widget _buildReservationsList(String status) {
     return ValueListenableBuilder(
       valueListenable: Hive.box<Reservation>('reservations').listenable(),
       builder: (context, Box<Reservation> box, _) {
         final logementBox = Hive.box<Logement>('logements');
-        
-        List<Reservation> filteredReservations = [];
-        for (var i = 0; i < box.length; i++) {
-          final reservation = box.getAt(i);
-          if (reservation != null) {
-            if (status == 'upcoming' && reservation.isUpcoming) {
-              filteredReservations.add(reservation);
-            } else if (status == 'completed' && reservation.isCompleted) {
-              filteredReservations.add(reservation);
-            } else if (status == 'cancelled' && reservation.isCancelled) {
-              filteredReservations.add(reservation);
-            }
-          }
-        }
+
+        // Filtrage sécurisé
+        final filteredReservations = box.values.where((reservation) {
+          if (status == 'upcoming') return reservation.isUpcoming;
+          if (status == 'completed') return reservation.isCompleted;
+          if (status == 'cancelled') return reservation.isCancelled;
+          return false;
+        }).toList();
 
         if (filteredReservations.isEmpty) {
           return _buildEmptyState(status);
@@ -163,13 +167,15 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
           itemCount: filteredReservations.length,
           itemBuilder: (context, index) {
             final reservation = filteredReservations[index];
+
+            // Chargement du logement en toute sécurité
             final logement = logementBox.get(reservation.logementId);
 
             return BookingCard(
               reservation: reservation,
-              logementName: logement?.nom,
-              logementImage: logement?.images.isNotEmpty == true 
-                  ? logement!.images.first 
+              logementName: logement?.nom ?? 'Logement inconnu',
+              logementImage: (logement?.images.isNotEmpty == true)
+                  ? logement!.images.first
                   : null,
               onTap: () => _showReservationDetails(reservation, logement),
             );
@@ -179,22 +185,29 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
     );
   }
 
+  // ------------------------------------------------------------
+  // EMPTY STATES
+  // ------------------------------------------------------------
+
   Widget _buildEmptyState(String status) {
     switch (status) {
       case 'upcoming':
         return EmptyStateWidget(
           icon: Icons.event_available_rounded,
           title: 'Aucune réservation à venir',
-          message: 'Explorez nos logements et réservez votre prochaine escapade !',
+          message:
+              'Explorez nos logements et réservez votre prochaine escapade !',
           buttonText: 'Explorer',
           onButtonPressed: () {},
         );
+
       case 'completed':
         return EmptyStateWidget(
           icon: Icons.history_rounded,
           title: 'Aucun voyage terminé',
           message: 'Vos réservations passées apparaîtront ici',
         );
+
       default:
         return EmptyStateWidget(
           icon: Icons.event_busy_rounded,
@@ -203,6 +216,10 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         );
     }
   }
+
+  // ------------------------------------------------------------
+  // DETAILS RÉSERVATION
+  // ------------------------------------------------------------
 
   void _showReservationDetails(Reservation reservation, Logement? logement) {
     showModalBottomSheet(
@@ -228,9 +245,12 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                   height: 4,
                   decoration: BoxDecoration(
                     color: AppTheme.borderLight,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusCircle),
+                    borderRadius:
+                        BorderRadius.circular(AppTheme.radiusCircle),
                   ),
                 ),
+
+                // CONTENU
                 Expanded(
                   child: SingleChildScrollView(
                     controller: scrollController,
@@ -242,17 +262,19 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                           'Réservation #${reservation.key}',
                           style: AppTheme.textTheme.headlineMedium,
                         ),
+
                         SizedBox(height: AppTheme.marginXL),
-                        
+
                         if (logement != null) ...[
-                          Text(logement.nom, style: AppTheme.textTheme.titleLarge),
+                          Text(logement.nom,
+                              style: AppTheme.textTheme.titleLarge),
                           Text('${logement.ville}, ${logement.adresse}'),
                         ],
-                        
+
                         SizedBox(height: AppTheme.marginXL),
                         Text('Prix total: ${reservation.prixTotal} DT'),
                         Text('Statut: ${reservation.status}'),
-                        
+
                         if (reservation.isUpcoming) ...[
                           SizedBox(height: AppTheme.marginXXL),
                           CustomButton(
@@ -260,7 +282,8 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                             variant: ButtonVariant.danger,
                             isFullWidth: true,
                             icon: Icons.cancel_rounded,
-                            onPressed: () => _cancelReservation(reservation),
+                            onPressed: () =>
+                                _cancelReservation(reservation),
                           ),
                         ],
                       ],
@@ -275,6 +298,10 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
     );
   }
 
+  // ------------------------------------------------------------
+  // ANNULATION DE RÉSERVATION
+  // ------------------------------------------------------------
+
   void _cancelReservation(Reservation reservation) {
     showDialog(
       context: context,
@@ -284,21 +311,25 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Non'),
+            child: const Text('Non'),
           ),
           ElevatedButton(
             onPressed: () async {
               reservation.status = 'cancelled';
               reservation.cancelledAt = DateTime.now();
               await reservation.save();
+
               Navigator.pop(context);
               Navigator.pop(context);
+
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Réservation annulée')),
+                const SnackBar(content: Text('Réservation annulée')),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
-            child: Text('Oui, annuler'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+            ),
+            child: const Text('Oui, annuler'),
           ),
         ],
       ),
