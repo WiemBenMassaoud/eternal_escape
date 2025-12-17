@@ -1,0 +1,2064 @@
+// lib/utils/profile_dialogs.dart
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/user.dart';
+import '../models/preferences.dart';
+import '../models/notification_settings.dart';
+import '../screens/welcome_screen.dart';
+
+class ProfileDialogs {
+  static Future<void> _saveUserData(User user) async {
+    try {
+      final userBox = Hive.box<User>('users');
+      await userBox.put(0, user);
+      print('Utilisateur sauvegardé dans Hive: ${user.nomComplet}');
+    } catch (e) {
+      print('Erreur sauvegarde utilisateur Hive: $e');
+    }
+  }
+
+  static Future<void> _savePreferences(Preferences prefs) async {
+    try {
+      final prefsBox = Hive.box<Preferences>('preferences');
+      await prefsBox.put(0, prefs);
+      print('Préférences sauvegardées dans Hive');
+    } catch (e) {
+      print('Erreur sauvegarde préférences Hive: $e');
+    }
+  }
+
+  static Future<void> _saveNotificationSettings(NotificationSettings notifications) async {
+    try {
+      print('🔍 Début de la sauvegarde des paramètres de notification...');
+      
+      if (!Hive.isAdapterRegistered(6)) {
+        print('⚠️ Adapter non enregistré, tentative d\'enregistrement...');
+        Hive.registerAdapter(NotificationSettingsAdapter());
+        await Future.delayed(Duration(milliseconds: 100));
+      }
+      
+      final notifBox = Hive.box<NotificationSettings>('notification_settings');
+      print('📦 Box obtenue: ${notifBox.name}, ouverte: ${notifBox.isOpen}');
+      
+      final settingsToSave = NotificationSettings(
+        reservationNotifications: notifications.reservationNotifications,
+        promotionNotifications: notifications.promotionNotifications,
+        newsletter: notifications.newsletter,
+        messageNotifications: notifications.messageNotifications,
+        pushNotifications: notifications.pushNotifications,
+        emailNotifications: notifications.emailNotifications,
+        smsNotifications: notifications.smsNotifications,
+        soundEnabled: notifications.soundEnabled,
+        vibrationEnabled: notifications.vibrationEnabled,
+        silentHoursEnabled: notifications.silentHoursEnabled,
+      );
+      
+      print('💾 Tentative de sauvegarde...');
+      await notifBox.put(0, settingsToSave);
+      
+      final saved = notifBox.get(0);
+      if (saved != null) {
+        print('✅ SUCCÈS: Paramètres sauvegardés avec succès!');
+      } else {
+        print('⚠️ ATTENTION: Les paramètres semblent ne pas être sauvegardés');
+      }
+      
+    } catch (e, stack) {
+      print('❌ ERREUR lors de la sauvegarde notifications Hive:');
+      print('Erreur: $e');
+      print('Stack trace: $stack');
+      
+      try {
+        print('🔄 Tentative de sauvegarde alternative...');
+        final backupBox = await Hive.openBox('notification_backup');
+        await backupBox.put('settings', {
+          'timestamp': DateTime.now().toIso8601String(),
+          'reservationNotifications': notifications.reservationNotifications,
+          'promotionNotifications': notifications.promotionNotifications,
+          'newsletter': notifications.newsletter,
+          'messageNotifications': notifications.messageNotifications,
+          'pushNotifications': notifications.pushNotifications,
+          'emailNotifications': notifications.emailNotifications,
+          'smsNotifications': notifications.smsNotifications,
+          'soundEnabled': notifications.soundEnabled,
+          'vibrationEnabled': notifications.vibrationEnabled,
+          'silentHoursEnabled': notifications.silentHoursEnabled,
+        });
+        print('✅ Sauvegardé dans notification_backup');
+      } catch (backupError) {
+        print('❌ Échec de la sauvegarde alternative: $backupError');
+      }
+      
+      throw Exception('Impossible de sauvegarder les paramètres de notification. Veuillez réessayer.');
+    }
+  }
+
+  static void showEditProfileDialog(
+    BuildContext context, {
+    required User currentUser,
+    required VoidCallback onSave,
+  }) {
+    String prenom = currentUser.prenom;
+    String nom = currentUser.nom;
+    String email = currentUser.email;
+    String telephone = currentUser.telephone;
+    String adresse = currentUser.adresse;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          title: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Color(0xFFEC407A).withOpacity(0.2), // Rose clair border
+                  ),
+                ),
+                child: Icon(Icons.edit_rounded, color: Color(0xFFEC407A), size: 22), // Rose
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Modifier le profil',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF333333),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Prénom',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEC407A)), // Rose
+                    ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  controller: TextEditingController(text: prenom),
+                  onChanged: (value) => prenom = value,
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Nom',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEC407A)), // Rose
+                    ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  controller: TextEditingController(text: nom),
+                  onChanged: (value) => nom = value,
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEC407A)), // Rose
+                    ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  controller: TextEditingController(text: email),
+                  onChanged: (value) => email = value,
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Téléphone',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEC407A)), // Rose
+                    ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  controller: TextEditingController(text: telephone),
+                  onChanged: (value) => telephone = value,
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Adresse',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFEC407A)), // Rose
+                    ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  controller: TextEditingController(text: adresse),
+                  onChanged: (value) => adresse = value,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: Color(0xFF666666),
+              ),
+              child: Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                print('Bouton Enregistrer cliqué!');
+                currentUser.prenom = prenom;
+                currentUser.nom = nom;
+                currentUser.email = email;
+                currentUser.telephone = telephone;
+                currentUser.adresse = adresse;
+                print('Nouvelles valeurs: ${currentUser.nomComplet} - ${currentUser.email}');
+
+                try {
+                  await _saveUserData(currentUser);
+                } catch (e) {
+                  print('Erreur Hive: $e');
+                }
+
+                Navigator.pop(context);
+                
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (onSave != null) {
+                    onSave();
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text('Modifications enregistrées!'),
+                        ],
+                      ),
+                      backgroundColor: Color(0xFFEC407A), // Rose
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFEC407A), // Rose
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text('Enregistrer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  static void showSnackbar(BuildContext context, String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError ? Color(0xFFF44336) : Color(0xFFEC407A), // Rose pour succès
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: Duration(seconds: isError ? 4 : 2),
+        margin: EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  static void showPreferencesDialog(
+    BuildContext context, {
+    required Preferences userPreferences,
+    required VoidCallback onSave,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.white,
+            child: Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Color(0xFFEC407A).withOpacity(0.2),
+                          ),
+                        ),
+                        child: Icon(Icons.settings_rounded, color: Color(0xFFEC407A), size: 24), // Rose
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Préférences',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildSwitchPreference(
+                            'Services de localisation',
+                            Icons.location_on_rounded,
+                            'Utiliser ma position pour des recommandations',
+                            userPreferences.locationServices,
+                            (value) => setState(() {
+                              userPreferences.locationServices = value;
+                            }),
+                            Color(0xFFEC407A), // Rose
+                          ),
+                          _buildSwitchPreference(
+                            'Synchronisation automatique',
+                            Icons.sync_rounded,
+                            'Synchroniser les données en arrière-plan',
+                            userPreferences.autoSync,
+                            (value) => setState(() {
+                              userPreferences.autoSync = value;
+                            }),
+                            Color(0xFF42A5F5), // Bleu
+                          ),
+                          ListTile(
+                            onTap: () => _showTravelPreferencesDialog(context, userPreferences, setState),
+                            leading: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Color(0xFFEC407A).withOpacity(0.2),
+                                ),
+                              ),
+                              child: Icon(Icons.flight_rounded, color: Color(0xFFEC407A), size: 20), // Rose
+                            ),
+                            title: Text(
+                              'Préférences de voyage',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF333333),
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Classe, siège, repas, etc.',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF666666)),
+                            ),
+                            trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Color(0xFF999999)),
+                          ),
+                          ListTile(
+                            onTap: () => _showContentPreferencesDialog(context, userPreferences, setState),
+                            leading: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF42A5F5).withOpacity(0.1), // Bleu clair
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Color(0xFF42A5F5).withOpacity(0.2),
+                                ),
+                              ),
+                              child: Icon(Icons.travel_explore_rounded, color: Color(0xFF42A5F5), size: 20), // Bleu
+                            ),
+                            title: Text(
+                              'Préférences de contenu',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF333333),
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Personnaliser vos recommandations',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF666666)),
+                            ),
+                            trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Color(0xFF999999)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Divider(color: Color(0xFFEAEAFF)),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            userPreferences.language = 'Français';
+                            userPreferences.currency = 'EUR';
+                            userPreferences.theme = 'Clair';
+                            userPreferences.locationServices = true;
+                            userPreferences.autoSync = true;
+                            userPreferences.notificationFrequency = 'Immédiate';
+                            userPreferences.travelClass = 'Économique';
+                            userPreferences.seatPreference = 'Fenêtre';
+                            userPreferences.mealPreference = 'Standard';
+                            userPreferences.hotelType = '3-4 étoiles';
+                            userPreferences.favoriteDestinations = ['Plage', 'Montagne', 'Ville'];
+                            userPreferences.averageBudget = '500-1000€';
+                            userPreferences.favoriteActivities = ['Randonnée', 'Gastronomie', 'Culture'];
+                          });
+                          showSnackbar(context, 'Préférences réinitialisées', isError: false);
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Color(0xFFEC407A), // Rose
+                        ),
+                        child: Text('Réinitialiser'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await _savePreferences(userPreferences);
+                            print('Préférences sauvegardées');
+                            
+                            if (onSave != null) {
+                              onSave();
+                            }
+                            
+                            Navigator.pop(context);
+                            
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              showSnackbar(context, 'Préférences enregistrées avec succès', isError: false);
+                            });
+                            
+                          } catch (e) {
+                            print('Erreur sauvegarde préférences: $e');
+                            showSnackbar(context, 'Erreur lors de la sauvegarde', isError: true);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFEC407A), // Rose
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: Text('Appliquer'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static Widget _buildSwitchPreference(String title, IconData icon, String subtitle, bool value, Function(bool) onChanged, Color color) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Color(0xFFEAEAFF),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFFEC407A).withOpacity(0.05), // Ombre rose
+            blurRadius: 15,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: SwitchListTile(
+        secondary: Container(
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: color.withOpacity(0.2),
+              width: 1.5,
+            ),
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF333333),
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 13, color: Color(0xFF666666)),
+        ),
+        value: value,
+        onChanged: onChanged,
+        activeColor: color,
+        activeTrackColor: color.withOpacity(0.3),
+      ),
+    );
+  }
+
+  static void _showTravelPreferencesDialog(BuildContext context, Preferences userPreferences, StateSetter parentSetState) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.white,
+            title: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Color(0xFFEC407A).withOpacity(0.2),
+                    ),
+                  ),
+                  child: Icon(Icons.flight_rounded, color: Color(0xFFEC407A), size: 22), // Rose
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Préférences de voyage',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF333333),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildPreferenceTile(
+                    'Classe de vol',
+                    userPreferences.travelClass,
+                    () => _showTravelClassSelector(context, userPreferences, setState),
+                  ),
+                  _buildPreferenceTile(
+                    'Siège préféré',
+                    userPreferences.seatPreference,
+                    () => _showSeatPreferenceSelector(context, userPreferences, setState),
+                  ),
+                  _buildPreferenceTile(
+                    'Repas spéciaux',
+                    userPreferences.mealPreference,
+                    () => _showMealPreferenceSelector(context, userPreferences, setState),
+                  ),
+                  _buildPreferenceTile(
+                    'Type d\'hôtel',
+                    userPreferences.hotelType,
+                    () => _showHotelTypeSelector(context, userPreferences, setState),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: Color(0xFF666666),
+                ),
+                child: Text('Annuler'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  parentSetState(() {});
+                  Navigator.pop(context);
+                  showSnackbar(context, 'Préférences de voyage enregistrées', isError: false);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFEC407A), // Rose
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: Text('Enregistrer'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  static Widget _buildPreferenceTile(String title, String value, VoidCallback onTap) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Color(0xFFEAEAFF),
+          width: 1.5,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF666666),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF999999)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static void _showTravelClassSelector(BuildContext context, Preferences userPreferences, StateSetter setState) {
+    List<String> classes = ['Économique', 'Premium', 'Affaires', 'Première'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Classe de vol',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF333333),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: classes.map((cls) {
+            return RadioListTile<String>(
+              title: Text(cls),
+              value: cls,
+              groupValue: userPreferences.travelClass,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    userPreferences.travelClass = value;
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              activeColor: Color(0xFFEC407A), // Rose
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  static void _showSeatPreferenceSelector(BuildContext context, Preferences userPreferences, StateSetter setState) {
+    List<String> seats = ['Fenêtre', 'Couloir', 'Aile'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Siège préféré',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF333333),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: seats.map((seat) {
+            return RadioListTile<String>(
+              title: Text(seat),
+              value: seat,
+              groupValue: userPreferences.seatPreference,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    userPreferences.seatPreference = value;
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              activeColor: Color(0xFFEC407A), // Rose
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  static void _showMealPreferenceSelector(BuildContext context, Preferences userPreferences, StateSetter setState) {
+    List<String> meals = ['Standard', 'Végétarien', 'Halal', 'Kasher', 'Sans gluten'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Repas spéciaux',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF333333),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: meals.map((meal) {
+            return RadioListTile<String>(
+              title: Text(meal),
+              value: meal,
+              groupValue: userPreferences.mealPreference,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    userPreferences.mealPreference = value;
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              activeColor: Color(0xFFEC407A), // Rose
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  static void _showHotelTypeSelector(BuildContext context, Preferences userPreferences, StateSetter setState) {
+    List<String> hotels = ['1-2 étoiles', '3-4 étoiles', '5 étoiles', 'Luxe'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        title: Text(
+          'Type d\'hôtel',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF333333),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: hotels.map((hotel) {
+            return RadioListTile<String>(
+              title: Text(hotel),
+              value: hotel,
+              groupValue: userPreferences.hotelType,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    userPreferences.hotelType = value;
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              activeColor: Color(0xFFEC407A), // Rose
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  static void _showContentPreferencesDialog(BuildContext context, Preferences userPreferences, StateSetter parentSetState) {
+    TextEditingController destinationsController = TextEditingController(text: userPreferences.favoriteDestinations.join(', '));
+    TextEditingController budgetController = TextEditingController(text: userPreferences.averageBudget);
+    TextEditingController activitiesController = TextEditingController(text: userPreferences.favoriteActivities.join(', '));
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.white,
+            child: Container(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF42A5F5).withOpacity(0.1), // Bleu clair
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Color(0xFF42A5F5).withOpacity(0.2),
+                          ),
+                        ),
+                        child: Icon(Icons.travel_explore_rounded, color: Color(0xFF42A5F5), size: 24), // Bleu
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Préférences de contenu',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: destinationsController,
+                            decoration: InputDecoration(
+                              labelText: 'Destinations préférées',
+                              hintText: 'Séparées par des virgules',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF42A5F5)), // Bleu
+                              ),
+                              prefixIcon: Icon(Icons.location_on_rounded, color: Color(0xFF42A5F5)), // Bleu
+                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
+                            maxLines: 2,
+                          ),
+                          SizedBox(height: 16),
+                          TextField(
+                            controller: budgetController,
+                            decoration: InputDecoration(
+                              labelText: 'Budget moyen',
+                              hintText: 'Ex: 500-1000€',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF42A5F5)), // Bleu
+                              ),
+                              prefixIcon: Icon(Icons.euro_rounded, color: Color(0xFF42A5F5)), // Bleu
+                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          TextField(
+                            controller: activitiesController,
+                            decoration: InputDecoration(
+                              labelText: 'Activités préférées',
+                              hintText: 'Séparées par des virgules',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF42A5F5)), // Bleu
+                              ),
+                              prefixIcon: Icon(Icons.directions_run_rounded, color: Color(0xFF42A5F5)), // Bleu
+                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
+                            maxLines: 2,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Ces préférences seront utilisées pour personnaliser vos recommandations de voyage.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF666666),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Color(0xFF666666),
+                        ),
+                        child: Text('Annuler'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            userPreferences.favoriteDestinations =
+                                destinationsController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                            userPreferences.averageBudget = budgetController.text;
+                            userPreferences.favoriteActivities =
+                                activitiesController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                          });
+                          parentSetState(() {});
+                          Navigator.pop(context);
+                          showSnackbar(context, 'Préférences de contenu enregistrées', isError: false);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF42A5F5), // Bleu
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: Text('Enregistrer'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static void showNotificationSettingsDialog(
+    BuildContext context, {
+    required NotificationSettings notificationSettings,
+    required VoidCallback onSave,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.white,
+            child: Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Color(0xFFEC407A).withOpacity(0.2),
+                          ),
+                        ),
+                        child: Icon(Icons.notifications_active_rounded, color: Color(0xFFEC407A), size: 24), // Rose
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Notifications',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildSectionTitle('Types de notifications'),
+                          _buildNotificationOption(
+                            'Réservations',
+                            Icons.confirmation_number_rounded,
+                            'Statut des réservations et rappels',
+                            notificationSettings.reservationNotifications,
+                            (value) => setState(() {
+                              notificationSettings.reservationNotifications = value;
+                            }),
+                            Color(0xFFEC407A), // Rose
+                          ),
+                          _buildNotificationOption(
+                            'Promotions',
+                            Icons.local_offer_rounded,
+                            'Offres spéciales et réductions',
+                            notificationSettings.promotionNotifications,
+                            (value) => setState(() {
+                              notificationSettings.promotionNotifications = value;
+                            }),
+                            Color(0xFF42A5F5), // Bleu
+                          ),
+                          _buildNotificationOption(
+                            'Newsletter',
+                            Icons.newspaper_rounded,
+                            'Nouvelles destinations et conseils',
+                            notificationSettings.newsletter,
+                            (value) => setState(() {
+                              notificationSettings.newsletter = value;
+                            }),
+                            Color(0xFFEC407A), // Rose
+                          ),
+                          _buildNotificationOption(
+                            'Messages',
+                            Icons.chat_rounded,
+                            'Messages et mises à jour de compte',
+                            notificationSettings.messageNotifications,
+                            (value) => setState(() {
+                              notificationSettings.messageNotifications = value;
+                            }),
+                            Color(0xFF42A5F5), // Bleu
+                          ),
+                          _buildSectionTitle('Canaux de notification'),
+                          _buildNotificationOption(
+                            'Notifications push',
+                            Icons.notifications_rounded,
+                            'Recevoir des notifications push',
+                            notificationSettings.pushNotifications,
+                            (value) => setState(() {
+                              notificationSettings.pushNotifications = value;
+                            }),
+                            Color(0xFFEC407A), // Rose
+                          ),
+                          _buildNotificationOption(
+                            'Notifications email',
+                            Icons.email_rounded,
+                            'Recevoir des emails',
+                            notificationSettings.emailNotifications,
+                            (value) => setState(() {
+                              notificationSettings.emailNotifications = value;
+                            }),
+                            Color(0xFF42A5F5), // Bleu
+                          ),
+                          _buildNotificationOption(
+                            'Notifications SMS',
+                            Icons.sms_rounded,
+                            'Recevoir des SMS',
+                            notificationSettings.smsNotifications,
+                            (value) => setState(() {
+                              notificationSettings.smsNotifications = value;
+                            }),
+                            Color(0xFFEC407A), // Rose
+                          ),
+                          _buildSectionTitle('Personnalisation'),
+                          _buildNotificationOption(
+                            'Son des notifications',
+                            Icons.volume_up_rounded,
+                            'Activer le son des notifications',
+                            notificationSettings.soundEnabled,
+                            (value) => setState(() {
+                              notificationSettings.soundEnabled = value;
+                            }),
+                            Color(0xFF42A5F5), // Bleu
+                          ),
+                          _buildNotificationOption(
+                            'Vibrations',
+                            Icons.vibration_rounded,
+                            'Activer les vibrations',
+                            notificationSettings.vibrationEnabled,
+                            (value) => setState(() {
+                              notificationSettings.vibrationEnabled = value;
+                            }),
+                            Color(0xFFEC407A), // Rose
+                          ),
+                          Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Color(0xFFEAEAFF),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFFEC407A).withOpacity(0.05), // Ombre rose
+                                  blurRadius: 15,
+                                  offset: Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: SwitchListTile(
+                              secondary: Container(
+                                padding: EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Color(0xFFEC407A).withOpacity(0.2),
+                                  ),
+                                ),
+                                child: Icon(Icons.schedule_rounded, color: Color(0xFFEC407A), size: 22), // Rose
+                              ),
+                              title: Text(
+                                'Plage horaire silencieuse',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF333333),
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Ne pas déranger de 22:00 à 08:00',
+                                style: TextStyle(fontSize: 13, color: Color(0xFF666666)),
+                              ),
+                              value: notificationSettings.silentHoursEnabled,
+                              onChanged: (value) {
+                                setState(() {
+                                  notificationSettings.silentHoursEnabled = value;
+                                });
+                              },
+                              activeColor: Color(0xFFEC407A), // Rose
+                              activeTrackColor: Color(0xFFEC407A).withOpacity(0.3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Divider(color: Color(0xFFEAEAFF)),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            notificationSettings.reservationNotifications = false;
+                            notificationSettings.promotionNotifications = false;
+                            notificationSettings.newsletter = false;
+                            notificationSettings.messageNotifications = false;
+                            notificationSettings.pushNotifications = false;
+                            notificationSettings.emailNotifications = false;
+                            notificationSettings.smsNotifications = false;
+                            notificationSettings.soundEnabled = false;
+                            notificationSettings.vibrationEnabled = false;
+                            notificationSettings.silentHoursEnabled = false;
+                          });
+                          showSnackbar(context, 'Toutes les notifications désactivées', isError: false);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Color(0xFFEC407A), // Rose
+                          side: BorderSide(color: Color(0xFFEC407A).withOpacity(0.3)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        ),
+                        child: Text('Tout désactiver'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => Center(
+                                child: Container(
+                                  padding: EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Color(0xFFEAEAFF),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      CircularProgressIndicator(color: Color(0xFFEC407A)), // Rose
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Sauvegarde en cours...',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF333333),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+
+                            await _saveNotificationSettings(notificationSettings);
+                            
+                            Navigator.pop(context);
+                            
+                            print('✅ Paramètres de notification sauvegardés');
+                            
+                            Navigator.pop(context);
+                            
+                            if (onSave != null) {
+                              await Future.delayed(Duration(milliseconds: 300));
+                              onSave();
+                            }
+                            
+                          } catch (e) {
+                            if (Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+                            
+                            print('❌ Erreur sauvegarde notifications: $e');
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.error_outline, color: Colors.white, size: 24),
+                                    SizedBox(width: 12),
+                                    Text('Erreur lors de la sauvegarde. Réessayez.'),
+                                  ],
+                                ),
+                                backgroundColor: Color(0xFFF44336),
+                                behavior: SnackBarBehavior.floating,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFEC407A), // Rose
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: Text('Enregistrer'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static Widget _buildNotificationOption(String title, IconData icon, String subtitle, bool value, Function(bool) onChanged, Color color) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Color(0xFFEAEAFF),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFFEC407A).withOpacity(0.05), // Ombre rose
+            blurRadius: 15,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: SwitchListTile(
+        secondary: Container(
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: color.withOpacity(0.2),
+              width: 1.5,
+            ),
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF333333),
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 13, color: Color(0xFF666666)),
+        ),
+        value: value,
+        onChanged: onChanged,
+        activeColor: color,
+        activeTrackColor: color.withOpacity(0.3),
+      ),
+    );
+  }
+
+  static Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: EdgeInsets.only(top: 16, bottom: 12),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF333333),
+        ),
+      ),
+    );
+  }
+
+  static void showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Color(0xFFEC407A).withOpacity(0.2),
+                ),
+              ),
+              child: Icon(Icons.help_rounded, color: Color(0xFFEC407A), size: 22), // Rose
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Centre d\'aide',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF333333),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildContactOption(
+              Icons.chat_rounded,
+              'Chat en direct',
+              'Support 24/7',
+              Color(0xFFEC407A), // Rose
+            ),
+            _buildContactOption(
+              Icons.call_rounded,
+              'Appeler',
+              '+216 70 123 456',
+              Color(0xFF42A5F5), // Bleu
+            ),
+            _buildContactOption(
+              Icons.email_rounded,
+              'Email',
+              'support@eternalescape.com',
+              Color(0xFFEC407A), // Rose
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: Color(0xFF666666),
+            ),
+            child: Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildContactOption(IconData icon, String title, String subtitle, Color color) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Color(0xFFEAEAFF),
+          width: 1.5,
+        ),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: color.withOpacity(0.2),
+            ),
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF333333),
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFF666666),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static void showContactDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final messageController = TextEditingController();
+    final subjectController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Color(0xFF42A5F5).withOpacity(0.1), // Bleu clair
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Color(0xFF42A5F5).withOpacity(0.2),
+                ),
+              ),
+              child: Icon(Icons.contact_support_rounded, color: Color(0xFF42A5F5), size: 22), // Bleu
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Contactez-nous',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF333333),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 16),
+              Text(
+                'Remplissez ce formulaire pour nous contacter',
+                style: TextStyle(
+                  color: Color(0xFF666666),
+                ),
+              ),
+              SizedBox(height: 20),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Nom complet',
+                  prefixIcon: Icon(Icons.person_rounded, color: Color(0xFF42A5F5)), // Bleu
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFF42A5F5)), // Bleu
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_rounded, color: Color(0xFF42A5F5)), // Bleu
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFF42A5F5)), // Bleu
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: subjectController,
+                decoration: InputDecoration(
+                  labelText: 'Sujet',
+                  prefixIcon: Icon(Icons.subject_rounded, color: Color(0xFF42A5F5)), // Bleu
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFF42A5F5)), // Bleu
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: messageController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Message',
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFFEAEAFF)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFF42A5F5)), // Bleu
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF666666)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Nous répondons généralement dans les 24 heures',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: Color(0xFF666666),
+            ),
+            child: Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (messageController.text.isEmpty || subjectController.text.isEmpty) {
+                showSnackbar(context, 'Veuillez remplir tous les champs', isError: true);
+                return;
+              }
+
+              Navigator.pop(context);
+              showSnackbar(context, 'Message envoyé avec succès !', isError: false);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF42A5F5), // Bleu
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text('Envoyer le message'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void showTermsDialog(BuildContext context) {
+    bool termsAccepted = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.white,
+            child: Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Color(0xFFEC407A).withOpacity(0.2),
+                          ),
+                        ),
+                        child: Icon(Icons.description_rounded, color: Color(0xFFEC407A), size: 24), // Rose
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Conditions d\'utilisation',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildTermsSection(
+                            '1. Acceptation des conditions',
+                            'En utilisant Eternal Escape, vous acceptez les présentes conditions d\'utilisation.',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTermsSection(
+                            '2. Compte utilisateur',
+                            'Vous êtes responsable de la confidentialité de votre compte et de votre mot de passe.',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTermsSection(
+                            '3. Réservations',
+                            'Les réservations sont soumises à disponibilité et aux conditions générales des prestataires.',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTermsSection(
+                            '4. Paiements',
+                            'Les paiements sont sécurisés et non remboursables sauf conditions particulières.',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTermsSection(
+                            '5. Confidentialité',
+                            'Vos données personnelles sont protégées conformément à notre politique de confidentialité.',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTermsSection(
+                            '6. Annulations',
+                            'Les annulations sont soumises aux conditions tarifaires de chaque réservation.',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTermsSection(
+                            '7. Responsabilité',
+                            'Eternal Escape agit comme intermédiaire et n\'est pas responsable des services fournis.',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTermsSection(
+                            '8. Modifications',
+                            'Nous nous réservons le droit de modifier ces conditions à tout moment.',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTermsSection(
+                            '9. Contact',
+                            'Pour toute question: support@eternalescape.com',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Divider(color: Color(0xFFEAEAFF)),
+                  SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: termsAccepted,
+                        onChanged: (value) {
+                          setState(() {
+                            termsAccepted = value ?? false;
+                          });
+                        },
+                        activeColor: Color(0xFFEC407A), // Rose
+                      ),
+                      Expanded(
+                        child: Text(
+                          'J\'ai lu et j\'accepte les conditions d\'utilisation',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF666666),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Color(0xFF666666),
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: Text('Annuler'),
+                      ),
+                      SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: termsAccepted
+                            ? () {
+                                Navigator.pop(context);
+                                showSnackbar(context, 'Conditions acceptées avec succès', isError: false);
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFEC407A), // Rose
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Color(0xFFCCCCCC),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: Text('Accepter'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static Widget _buildTermsSection(String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF333333),
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          content,
+          style: TextStyle(
+            fontSize: 14,
+            color: Color(0xFF666666),
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  static void showLogoutDialog(
+    BuildContext context, {
+    required VoidCallback onConfirmLogout,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Color(0xFFEC407A).withOpacity(0.1), // Rose clair
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Color(0xFFEC407A).withOpacity(0.2),
+                ),
+              ),
+              child: Icon(
+                Icons.logout_rounded,
+                color: Color(0xFFEC407A), // Rose
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Se déconnecter',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF333333),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Êtes-vous sûr de vouloir vous déconnecter ?',
+              style: TextStyle(
+                fontSize: 16,
+                color: Color(0xFF666666),
+              ),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Color(0xFFF8F9FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Color(0xFFEAEAFF),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: Color(0xFFEC407A), // Rose
+                    size: 20,
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Vous devrez vous reconnecter la prochaine fois',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: Color(0xFF666666),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text(
+              'Annuler',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              final scaffoldContext = context;
+              
+              showDialog(
+                context: scaffoldContext,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  content: Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Color(0xFFEAEAFF),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(
+                          color: Color(0xFFEC407A), // Rose
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          'Déconnexion en cours...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+              
+              try {
+                await Future.delayed(Duration(milliseconds: 800));
+                
+                Navigator.pop(scaffoldContext);
+                
+                onConfirmLogout();
+                
+              } catch (e) {
+                if (scaffoldContext.mounted) {
+                  Navigator.pop(scaffoldContext);
+                  onConfirmLogout();
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFFEC407A), // Rose
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              elevation: 0,
+            ),
+            child: Text(
+              'Déconnexion',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
